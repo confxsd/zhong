@@ -147,3 +147,22 @@ npm run build
 
 Runtime files and local secrets are ignored by git. The SQLite database remains
 local to the machine.
+
+## iOS App
+
+A native SwiftUI iOS app is in `apps/ios/` providing inline text selection
+teaching via iOS 18.4+ Writing Tools App Intents.
+
+**Setup needed to continue:**
+- Install Xcode 16.x (requires macOS 15+, ~3-4 GB download)
+- `open apps/ios/ZhongIOS.xcodeproj`
+- Sign in with free Apple ID (Xcode → Settings → Accounts)
+- Build to iPhone via USB (⌘R) — no App Store needed
+- Rebuild weekly to refresh the 7-day signing window
+
+**Currently working:** App Intents, deep link handling, API client, full
+lesson result view (translation, pinyin, segments, breakdown, grammar,
+vocab), settings with backend URL config + health check.
+
+**Pending:** Test build on-device, verify Writing Tools popover integration
+on iOS 18.4, deploy Cloudflare backend and configure URL.

@@ -1,217 +1,158 @@
-# 仲 Zhōng — Chinese Study Companion
+# 仲 Zhōng
 
-Select (or paste) any Chinese text → Zhōng teaches it like a real tutor:
-natural translation, character-by-character breakdown, grammar notes, context
-tips — then quietly saves the new words to **your** memory and quizzes you later
-with spaced repetition.
+Zhōng is a Chinese learning companion for macOS. Select Chinese text anywhere,
+get a fast beginner-friendly explanation, and save the useful words for review.
 
-Built to be fast, local-first, and provider-agnostic (DeepSeek by default).
+![Inline quick lesson](docs/screenshots/selection-lesson.png)
 
-## Quick start
+The native picker reads selections across macOS apps, including Chrome and
+Electron apps. It renders the first lesson in place instead of forcing a
+browser redirect.
 
-Requires Node 20+.
+![Vocabulary library](docs/screenshots/library.png)
+
+## Features
+
+- Inline selection pill and teaching card for Chinese text across macOS
+- Translation, pinyin, grammar, context, vocabulary, and learning tips
+- Persistent SQLite vocabulary memory and study history
+- Leitner-style spaced repetition review
+- Dark responsive web library and review experience
+- Provider-agnostic AI layer: DeepSeek, OpenAI, Ollama, Groq, and other
+  OpenAI-compatible APIs
+- Chrome right-click extension and native macOS Services integration
+- Native menubar app with background server control
+
+## Quick Start
+
+Requires Node 20+ and macOS Xcode Command Line Tools for native integrations.
 
 ```bash
 npm install
-cp .env.example .env        # then add your DEEPSEEK_API_KEY
-npm run dev                 # web on http://localhost:5173, API on :4450
+cp .env.example .env
+# Add DEEPSEEK_API_KEY to .env
+npm run dev
 ```
 
-Production build / single-process mode:
+Open `http://localhost:5173` in development. Production mode:
 
 ```bash
 npm run build
-npm start                   # serves web UI + API on http://localhost:4450
+npm start
 ```
 
-Your data lives in `apps/server/data/zhong.db` (SQLite, one file — back it up by
-copying it). Server runtime files live in `~/.zhong/` (PID + logs).
+Data is stored locally at `apps/server/data/zhong.db`.
 
-## Global CLI: `zhong`
+## Global Command
 
-Install the `zhong` command once (works from any directory, from zsh, iTerm,
-Alfred, etc.):
+Install the command once from this repository:
 
 ```bash
-npm link                    # in the repo — creates the global `zhong` command
+npm link
 ```
 
-| Command | What it does |
-| --- | --- |
-| `zhong` | Start the app as a background process (rebuilds if sources changed) and open the browser |
-| `zhong dev` | Development mode (hot reload) on http://localhost:5173 |
-| `zhong stop` / `zhong restart` | Stop / restart the background server |
-| `zhong status` | Show server + startup-item status |
-| `zhong build` | Rebuild server and web |
-| `zhong menubar` | Launch the menubar app (中 icon) without a login item |
-| `zhong install-services` | Build + register the system service host (`~/Library/Services/ZhongService.app`) — right-click → Services → Teach with Zhōng in every app |
-| `zhong uninstall-services` | Remove the system service |
-| `zhong install-picker` | Install the instant selection pill (中 appears at any selection — all apps incl. Chrome; needs one-time Accessibility grant) |
-| `zhong uninstall-picker` | Remove the selection pill |
-| `zhong install-startup` | **Auto-start at login** — installs two launchd LaunchAgents: the server (`com.zhong.server`, keeps it alive in the background) and the menubar app (`com.zhong.menubar`) |
-| `zhong uninstall-startup` | Remove both login startup items |
-| `zhong logs` | Tail the last 50 log lines |
-
-Startup-item flow: run `zhong install-startup` once → a 中 icon appears in the
-menu bar (top right) and the server silently runs from login onward → `zhong`
-then just opens the browser to an already-running app. The menubar icon shows
-live server status, opens the app's pages, and can start/stop the server. No
-dock icon, no terminal window needed.
-
-## Menu bar app
-
-Native menu-bar status item (Swift/AppKit, built on the fly by `swiftc` —
-requires Xcode Command Line Tools). Click the 中 icon:
-
-- **Open Zhōng / Review / Library** — opens those pages
-- **Start / Stop server** — controls the background server via the CLI
-- Live status row: `● Server running` / `○ Server stopped` (polls every 3s)
-
-Source: `apps/menubar/StatusBarApp.swift`, build: `apps/menubar/build.sh`
-→ `~/.zhong/ZhongMenubar.app` (server state and logs live in `~/.zhong/`).
-
-## macOS system-wide: right-click → Teach with Zhōng
-
-`zhong install-services` builds and installs a small **service host app**
-(`apps/service/`, → `~/Library/Services/ZhongService.app`) that macOS itself
-launches on demand. It works in **every** app:
-
-1. Select any Chinese text in Safari, Notes, Pages, Mail, Word, TextEdit…
-2. Right-click → **Services → Teach with Zhōng**
-3. The lesson opens with your selection pre-filled (an alert appears if the
-   server isn't running).
-
-`zhong install-startup` registers it automatically; service menus are cached
-per app, so relaunch the app you test in (or log out/in) after installing.
-Apps that hide the Services submenu (Chrome, Electron-based apps) still work
-via a global hotkey, which you can bind here:
-
-> System Settings → Keyboard → Keyboard Shortcuts → **Services → Text**
-> → assign a shortcut to "Teach with Zhōng" (e.g. ⌥⌘T)
-
-`zhong uninstall-services` removes the service host.
-
-## Instant selection pill — any app, including Chrome (PopClip-style)
-
-`zhong install-picker` installs `ZhongPicker` (Swift, public Accessibility API):
-select any Chinese text **anywhere** on screen — Safari, Chrome, VS Code,
-Notes, Word, Pages… — and a small **中 pill appears beside the selection**.
-Click it → a compact teaching card renders in place with the translation,
-pinyin, grammar, useful words, and a full-lesson button. It does not redirect
-you away just to get the first explanation.
-
-- **One-time setup:** grant Accessibility access to "ZhongPicker" in
-  System Settings → Privacy & Security → Accessibility (the picker opens that
-  pane for you). It explains itself in a floating window until granted.
-- Runs silently at login (`com.zhong.picker`, launchd `KeepAlive`), no dock
-  icon — the same always-on model as the menubar app and server.
-- Works in Chrome and Electron apps (which hide the Services menu), because it
-  reads the selection directly instead of through context menus. Electron apps
-  without an AX focused element use a clipboard-preserving Cmd+C fallback.
-- `zhong uninstall-picker` removes it; `zhong status` shows its state.
-
-Source: `apps/picker/PickerApp.swift` (floating `NSPanel` + AX polling,
-~0.45s latency, pinned until the explicit close control).
-
-## Chrome extension (right-click → teach)
-
-Select any Chinese text in Chrome, right-click → **仲 Zhōng — teach this text**
-→ the lesson opens in a new tab with your selection pre-filled. If the server is
-off it shows a notification instead.
-
-Install (one-time):
-
-1. Open `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. **Load unpacked** → choose `extensions/chrome` in this repo
-
-Source: `extensions/chrome/` (Manifest V3, context-menus only — no tracking,
-no page access). The future browser-extension follow-ups (bubble translator,
-keyboard shortcuts) build on this same directory.
-
-## Select text from any webpage (bookmarklet)
-
-Drag this into your bookmarks bar, then select Chinese text on any page and
-click it:
-
-```
-javascript:(function(){const t=(window.getSelection?window.getSelection().toString():'')||'';if(!t){alert('Select some Chinese text first!');return;}window.open('http://localhost:4450/?text='+encodeURIComponent(t),'_blank')})();
+```text
+zhong                    Start the background app and open the browser
+zhong dev                Development mode with hot reload
+zhong status             Server, menubar, picker, and service status
+zhong stop               Stop the background server
+zhong restart            Restart the background server
+zhong build              Rebuild server and web
+zhong logs               Show recent runtime logs
 ```
 
-(The app reads the `?text=` parameter and pre-fills the study box — the future
-browser-extension / Electron route takes the same path.)
+## macOS Integrations
 
-## How it works
-
-```
-web (React) ──/api──▶ server (Express + SQLite)
-                        │
-                        └─▶ provider.chatJson()  ← any OpenAI-compatible model
-```
-
-1. **Teach** — `POST /api/translate` sends the text plus a profile of what you
-   already know ("student studied 37 words; 晚饭 → dinner appears here").
-   The model returns structured JSON: translation, pinyin, segments with
-   literal glosses, character breakdown, grammar points, study notes, and new
-   vocabulary.
-2. **Memory** — new words are upserted into `vocab`. Words you've already
-   studied are *recognized* and flagged, so the tutor builds on them instead of
-   re-teaching them.
-3. **Review** — a Leitner-box SRS (`box 0–7`, intervals 1/1/2/4/7/14/30/60
-   days) feeds the flashcards. Grades: Again / Hard / Good / Easy.
-4. **History** — every session is kept; reopen it any time.
-
-## Project layout
-
-```
-apps/
-  server/   Express 5 · better-sqlite3 · zod — API, AI layer, SRS engine
-    src/ai/       provider-agnostic model layer (interface + adapters)
-    src/services/ teach.ts (prompt + persistence), srs.ts (spaced repetition)
-    src/routes/   translate / vocab / review / sessions
-  web/      React 19 · Vite 6 · Tailwind 4 · TanStack Query · react-router
-```
-
-## Switching AI providers
-
-The model layer is provider-agnostic (`src/ai/types.ts`). Every built-in
-provider speaks the OpenAI-compatible protocol, so switching is config-only:
+### Instant Picker
 
 ```bash
-# OpenAI
+zhong install-picker
+```
+
+Grant `ZhongPicker` access under **System Settings → Privacy & Security →
+Accessibility**. Then select Chinese text in Safari, Chrome, Cursor, Notes,
+Word, or other apps. The `中` pill stays available until you explicitly close
+it. Long lessons are scrollable and render inline.
+
+Remove it with `zhong uninstall-picker`.
+
+### Menubar And Startup
+
+```bash
+zhong install-startup
+```
+
+This installs the server and native `中` menubar app as launchd agents. The
+menubar menu opens Study, Review, and Library and can start or stop the server.
+
+Use `zhong uninstall-startup` to remove both login items.
+
+### macOS Services
+
+```bash
+zhong install-services
+```
+
+This installs `ZhongService.app` into `~/Library/Services`. In apps that expose
+Services, select text and choose **Services → Teach with Zhōng**. Chrome and
+some Electron apps hide that menu; use the Instant Picker instead.
+
+### Chrome Extension
+
+1. Open `chrome://extensions`.
+2. Enable **Developer mode**.
+3. Choose **Load unpacked** and select `extensions/chrome`.
+4. Select Chinese text and choose **仲 Zhōng — teach this text** from the
+   context menu.
+
+## AI Providers
+
+DeepSeek is the default:
+
+```bash
+AI_PROVIDER=deepseek
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+OpenAI:
+
+```bash
 AI_PROVIDER=openai
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
+```
 
-# DeepSeek (default)
-DEEPSEEK_API_KEY=sk-...
+Any OpenAI-compatible endpoint:
 
-# Any other OpenAI-compatible endpoint: Ollama, Groq, LM Studio, Together...
+```bash
 AI_PROVIDER=openai-compatible
+AI_API_KEY=...
 AI_BASE_URL=http://localhost:11434/v1
 AI_MODEL=llama3
 ```
 
-For a custom protocol, implement `AIProvider` and register it in
-`src/ai/provider.ts`.
+The provider interface lives in `apps/server/src/ai/types.ts`.
 
-## API surface
+## Structure
 
-| Method | Path                 | Purpose                          |
-| ------ | -------------------- | -------------------------------- |
-| GET    | `/api/health`        | provider + stats                 |
-| POST   | `/api/translate`     | teach a text (saves session+vocab) |
-| GET    | `/api/sessions`      | history list                     |
-| GET    | `/api/sessions/:id`  | full session detail              |
-| DELETE | `/api/sessions/:id`  |                                  |
-| GET    | `/api/vocab`         | library, filter by status/search |
-| DELETE | `/api/vocab/:id`     |                                  |
-| GET    | `/api/review/due`    | cards due now                    |
-| POST   | `/api/review/:id`    | grade a card (`again/hard/good/easy`) |
+```text
+apps/server/       Express API, SQLite, AI providers, SRS
+apps/web/          React, Vite, Tailwind, library and review UI
+apps/picker/       Native macOS selection overlay
+apps/menubar/      Native macOS menubar app
+apps/service/      Native macOS Services host
+extensions/chrome/ Manifest V3 selection context menu
+bin/zhong          Global macOS lifecycle CLI
+```
 
-## Roadmap
+## Development Checks
 
-- Browser extension (selection → bubble)
-- Streaming responses, text-to-speech for pinyin
-- Export/import study data, CSV flashcards
-- SRS tuning, per-word notes by hand
+```bash
+npm test
+npm run typecheck
+npm run build
+```
+
+Runtime files and local secrets are ignored by git. The SQLite database remains
+local to the machine.

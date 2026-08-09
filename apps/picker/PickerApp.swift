@@ -397,9 +397,9 @@ final class PickerController: NSObject {
 
         lessonStack = NSStackView()
         lessonStack.orientation = .vertical
-        lessonStack.alignment = .width
+        lessonStack.alignment = .leading
         lessonStack.spacing = 9
-        lessonStack.edgeInsets = NSEdgeInsets(top: 16, left: 20, bottom: 16, right: 28)
+        lessonStack.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
         lessonDocument.addSubview(lessonStack)
         lessonStack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -411,10 +411,10 @@ final class PickerController: NSObject {
             lessonDocument.trailingAnchor.constraint(equalTo: lessonScroll.contentView.trailingAnchor),
             lessonDocument.topAnchor.constraint(equalTo: lessonScroll.contentView.topAnchor),
             lessonDocument.bottomAnchor.constraint(equalTo: lessonScroll.contentView.bottomAnchor),
-            lessonStack.topAnchor.constraint(equalTo: lessonDocument.topAnchor),
-            lessonStack.bottomAnchor.constraint(equalTo: lessonDocument.bottomAnchor),
-            lessonStack.leadingAnchor.constraint(equalTo: lessonDocument.leadingAnchor),
-            lessonStack.trailingAnchor.constraint(equalTo: lessonDocument.trailingAnchor)
+            lessonStack.topAnchor.constraint(equalTo: lessonDocument.topAnchor, constant: 16),
+            lessonStack.bottomAnchor.constraint(equalTo: lessonDocument.bottomAnchor, constant: -16),
+            lessonStack.leadingAnchor.constraint(equalTo: lessonDocument.leadingAnchor, constant: 20),
+            lessonStack.trailingAnchor.constraint(equalTo: lessonDocument.trailingAnchor, constant: -28)
         ])
         self.lessonPanel = lesson
     }
@@ -426,10 +426,18 @@ final class PickerController: NSObject {
         }
     }
 
+    private func addLessonView(_ view: NSView) {
+        lessonStack.addArrangedSubview(view)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.widthAnchor.constraint(equalTo: lessonStack.widthAnchor).isActive = true
+    }
+
     private func makeLabel(_ text: String, size: CGFloat, weight: NSFont.Weight = .regular, color: NSColor = .labelColor, lines: Int = 1, serif: Bool = false) -> NSTextField {
         let field = NSTextField(labelWithString: text)
         field.font = serif ? (NSFont(name: "Noto Serif SC", size: size) ?? NSFont.systemFont(ofSize: size, weight: weight)) : NSFont.systemFont(ofSize: size, weight: weight)
         field.textColor = color
+        field.alignment = .left
+        field.baseWritingDirection = .leftToRight
         field.maximumNumberOfLines = lines
         field.lineBreakMode = lines > 1 ? .byWordWrapping : .byTruncatingTail
         field.usesSingleLineMode = lines == 1
@@ -440,8 +448,8 @@ final class PickerController: NSObject {
     private func showLessonLoading(text: String) {
         clearLessonStack()
         addLessonHeader("仲  ·  Quick lesson")
-        lessonStack.addArrangedSubview(makeLabel(text, size: 19, weight: .semibold, lines: 6, serif: true))
-        lessonStack.addArrangedSubview(makeLabel("Preparing translation, grammar, and useful words…", size: 12, color: .secondaryLabelColor))
+        addLessonView(makeLabel(text, size: 19, weight: .semibold, lines: 6, serif: true))
+        addLessonView(makeLabel("Preparing translation, grammar, and useful words…", size: 12, color: .secondaryLabelColor))
         position(lessonPanel, near: currentAnchor, width: 460, height: 220)
         fitLessonPanel(maxHeight: 520)
         lessonPanel.orderFrontRegardless()
@@ -470,25 +478,25 @@ final class PickerController: NSObject {
     private func showLesson(_ lesson: InlineLesson, text: String) {
         clearLessonStack()
         addLessonHeader("仲  ·  Quick lesson")
-        lessonStack.addArrangedSubview(makeLabel(text, size: 20, weight: .semibold, lines: 8, serif: true))
-        lessonStack.addArrangedSubview(makeLabel(lesson.pinyin, size: 12, color: .secondaryLabelColor))
-        lessonStack.addArrangedSubview(makeLabel(lesson.translation, size: 16, weight: .medium, lines: 5))
+        addLessonView(makeLabel(text, size: 20, weight: .semibold, lines: 8, serif: true))
+        addLessonView(makeLabel(lesson.pinyin, size: 12, color: .secondaryLabelColor))
+        addLessonView(makeLabel(lesson.translation, size: 16, weight: .medium, lines: 5))
         if let grammar = lesson.grammar.first {
-            lessonStack.addArrangedSubview(makeLabel("Grammar · \(grammar.point)", size: 12, weight: .bold, color: NSColor(calibratedRed: 0.78, green: 0.26, blue: 0.17, alpha: 1)))
-            lessonStack.addArrangedSubview(makeLabel(grammar.explanation, size: 12, color: .secondaryLabelColor, lines: 6))
+            addLessonView(makeLabel("Grammar · \(grammar.point)", size: 12, weight: .bold, color: NSColor(calibratedRed: 0.78, green: 0.26, blue: 0.17, alpha: 1)))
+            addLessonView(makeLabel(grammar.explanation, size: 12, color: .secondaryLabelColor, lines: 6))
         }
         if !lesson.vocab.isEmpty {
             let words = lesson.vocab.prefix(4).map { "\($0.hanzi)  \($0.pinyin)  \($0.meaning)" }.joined(separator: "  ·  ")
-            lessonStack.addArrangedSubview(makeLabel("Words · \(words)", size: 12, weight: .medium, lines: 5))
+            addLessonView(makeLabel("Words · \(words)", size: 12, weight: .medium, lines: 5))
         }
         if let note = lesson.notes.first {
-            lessonStack.addArrangedSubview(makeLabel("Tip · \(note)", size: 11, color: .secondaryLabelColor, lines: 5))
+            addLessonView(makeLabel("Tip · \(note)", size: 11, color: .secondaryLabelColor, lines: 5))
         }
         let full = NSButton(title: "Open full lesson", target: self, action: #selector(openFullLesson))
         full.bezelStyle = .rounded
         full.focusRingType = .none
         full.controlSize = .small
-        lessonStack.addArrangedSubview(full)
+        addLessonView(full)
         position(lessonPanel, near: currentAnchor, width: 460, height: 500)
         fitLessonPanel(maxHeight: 560)
         lessonPanel.orderFrontRegardless()
@@ -509,16 +517,16 @@ final class PickerController: NSObject {
         close.font = .systemFont(ofSize: 18)
         close.contentTintColor = .secondaryLabelColor
         row.addArrangedSubview(close)
-        lessonStack.addArrangedSubview(row)
+        addLessonView(row)
     }
 
     private func showLessonError() {
         clearLessonStack()
-        lessonStack.addArrangedSubview(makeLabel("Couldn’t reach Zhong", size: 15, weight: .semibold))
-        lessonStack.addArrangedSubview(makeLabel("The server may be starting. Try the selection again in a moment.", size: 12, color: .secondaryLabelColor, lines: 2))
+        addLessonView(makeLabel("Couldn’t reach Zhong", size: 15, weight: .semibold))
+        addLessonView(makeLabel("The server may be starting. Try the selection again in a moment.", size: 12, color: .secondaryLabelColor, lines: 2))
         let close = NSButton(title: "Close", target: self, action: #selector(closeLesson))
         close.bezelStyle = .rounded
-        lessonStack.addArrangedSubview(close)
+        addLessonView(close)
         position(lessonPanel, near: currentAnchor, width: 390, height: 150)
     }
 

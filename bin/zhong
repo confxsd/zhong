@@ -1,0 +1,730 @@
+#!/usr/bin/env node
+"use strict";
+
+const { spawn, execSync } = require("node:child_process");
+const fs = require("node:fs");
+const http = require("node:http");
+const os = require("node:os");
+const path = require("node:path");
+
+const SCRIPT = fs.realpathSync(__filename);
+const ROOT = path.resolve(path.dirname(SCRIPT), "..");
+const PORT = 4450;
+const WEB_PORT = 5173;
+const STATE_DIR = path.join(os.homedir(), ".zhong");
+const PID_FILE = path.join(STATE_DIR, "server.pid");
+const LOG_FILE = path.join(STATE_DIR, "server.log");
+const ERR_FILE = path.join(STATE_DIR, "server.err.log");
+const PLIST_DEFAULT = path.join(os.homedir(), "Library", "LaunchAgents", "com.zhong.server.plist");
+const MENUBAR_APP = path.join(STATE_DIR, "ZhongMenubar.app");
+const MENUBAR_BIN = path.join(MENUBAR_APP, "Contents", "MacOS", "ZhongMenubar");
+const MENUBAR_PLIST = path.join(os.homedir(), "Library", "LaunchAgents", "com.zhong.menubar.plist");
+const SERVICE_APP = path.join(os.homedir(), "Library", "Services", "ZhongService.app");
+const SERVICE_BIN = path.join(SERVICE_APP, "Contents", "MacOS", "ZhongService");
+const PICKER_APP = path.join(STATE_DIR, "ZhongPicker.app");
+const PICKER_BIN = path.join(PICKER_APP, "Contents", "MacOS", "ZhongPicker");
+const PICKER_PLIST = path.join(os.homedir(), "Library", "LaunchAgents", "com.zhong.picker.plist");
+const CONFIG_FILE = path.join(STATE_DIR, "config.json");
+const SERVER_ENTRY = path.join(ROOT, "apps", "server", "dist", "index.js");
+const URL = `http://localhost:${PORT}`;
+const LSREGISTER = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+const PBS = "/System/Library/CoreServices/pbs";
+const SIGN_IDENTITY = "Zhong Codesign";
+const LOGIN_KEYCHAIN = path.join(os.homedir(), "Library", "Keychains", "login.keychain-db");
+
+const c = (m, code) => `\x1b[${code}m${m}\x1b[0m`;
+const ok = (m) => c(m, "32");
+const err = (m) => c(m, "31");
+const dim = (m) => c(m, "2");
+const bold = (m) => c(m, "1");
+
+function ensureStateDir() {
+  fs.mkdirSync(STATE_DIR, { recursive: true });
+}
+
+function readPid() {
+  try {
+    return Number(fs.readFileSync(PID_FILE, "utf8").trim());
+  } catch {
+    return null;
+  }
+}
+
+function alive(pid) {
+  if (!pid) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function portOpen(port, ms = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get({ host: "127.0.0.1", port, path: "/api/health", timeout: ms }, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
+    req.on("error", () => resolve(false));
+  });
+}
+
+async function waitPort(port, timeoutMs = 20000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await portOpen(port)) return true;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return false;
+}
+
+function newestMtime(dir) {
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    let max = 0;
+    for (const e of entries) {
+      const p = path.join(dir, e.name);
+      const st = fs.statSync(p);
+      if (e.isDirectory()) max = Math.max(max, newestMtime(p));
+      else max = Math.max(max, st.mtimeMs);
+    }
+    return max;
+  } catch {
+    return 0;
+  }
+}
+
+function isStale() {
+  const outs = [
+    path.join(ROOT, "apps", "server", "dist", "index.js"),
+    path.join(ROOT, "apps", "web", "dist", "index.html"),
+  ].map((p) => {
+    try {
+      return fs.statSync(p).mtimeMs;
+    } catch {
+      return 0;
+    }
+  });
+  const srcs = [path.join(ROOT, "apps", "server", "src"), path.join(ROOT, "apps", "web", "src")].map(newestMtime);
+  return srcs.some((s, i) => outs[i] === 0 || s > outs[i]);
+}
+
+function runBuild() {
+  execSync("npm run build", { cwd: ROOT, stdio: "inherit" });
+}
+
+function openBrowser(url) {
+  const cmd =
+    process.platform === "darwin"
+      ? `open "${url}"`
+      : process.platform === "win32"
+        ? `start "" "${url}"`
+        : `xdg-open "${url}"`;
+  spawn(cmd, { shell: true, detached: true, stdio: "ignore" }).unref();
+}
+
+function startServer() {
+  ensureStateDir();
+  const log = fs.openSync(LOG_FILE, "a");
+  const errl = fs.openSync(ERR_FILE, "a");
+  const child = spawn(process.execPath, [SERVER_ENTRY], {
+    cwd: ROOT,
+    detached: true,
+    stdio: ["ignore", log, errl],
+  });
+  child.unref();
+  if (child.pid) fs.writeFileSync(PID_FILE, String(child.pid));
+  return child.pid;
+}
+
+function killPort(port) {
+  try {
+    const out = execSync(`lsof -ti tcp:${port}`, { stdio: "pipe" }).toString().trim();
+    if (!out) return;
+    for (const p of out.split("\n")) {
+      try {
+        process.kill(Number(p.trim()), "SIGTERM");
+      } catch {}
+    }
+  } catch {}
+}
+
+function plistPath() {
+  return process.env.ZHONG_PLIST_PATH || PLIST_DEFAULT;
+}
+
+function startupInstalled() {
+  return fs.existsSync(plistPath());
+}
+
+function menubarInstalled() {
+  return fs.existsSync(MENUBAR_BIN) && fs.existsSync(MENUBAR_PLIST);
+}
+
+function writeConfig() {
+  ensureStateDir();
+  const nodePath = fs.realpathSync(process.execPath);
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ cliPath: SCRIPT, nodePath, serverUrl: URL }, null, 2));
+}
+
+function buildMenubar() {
+  if (fs.existsSync(MENUBAR_BIN)) return true;
+  console.log(dim("Building menubar app (swiftc)…"));
+  try {
+    execSync(`bash "${path.join(ROOT, "apps", "menubar", "build.sh")}" "${MENUBAR_APP}"`, { stdio: "inherit" });
+    return true;
+  } catch {
+    console.error(err("Menubar build failed — install Xcode Command Line Tools (xcode-select --install)"));
+    return false;
+  }
+}
+
+function buildMenubarForce() {
+  try {
+    execSync(`bash "${path.join(ROOT, "apps", "menubar", "build.sh")}" "${MENUBAR_APP}"`, { stdio: "inherit" });
+    return true;
+  } catch {
+    console.error(err("Menubar build failed — install Xcode Command Line Tools (xcode-select --install)"));
+    return false;
+  }
+}
+
+function buildService() {
+  try {
+    execSync(`bash "${path.join(ROOT, "apps", "service", "build.sh")}" "${SERVICE_APP}"`, { stdio: "inherit" });
+    return true;
+  } catch {
+    console.error(err("Service build failed — install Xcode Command Line Tools (xcode-select --install)"));
+    return false;
+  }
+}
+
+function buildPicker() {
+  try {
+    execSync(`bash "${path.join(ROOT, "apps", "picker", "build.sh")}" "${PICKER_APP}"`, { stdio: "inherit" });
+    return true;
+  } catch {
+    console.error(err("Picker build failed — install Xcode Command Line Tools (xcode-select --install)"));
+    return false;
+  }
+}
+
+function pickerInstalled() {
+  return fs.existsSync(PICKER_BIN) && fs.existsSync(PICKER_PLIST);
+}
+
+function pickerRunning() {
+  try {
+    const out = execSync(`pgrep -x ZhongPicker`, { stdio: "pipe" }).toString().trim();
+    return out.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function pickerTrusted() {
+  try {
+    const log = fs.readFileSync(path.join(STATE_DIR, "picker.log"), "utf8");
+    const lines = log.split("\n").filter((l) => l.includes("AXIsProcessTrusted"));
+    if (lines.length === 0) return null;
+    return lines[lines.length - 1].includes("= true");
+  } catch {
+    return null;
+  }
+}
+
+function signingIdentityInstalled() {
+  try {
+    const out = execSync(`security find-identity -p codesigning 2>/dev/null | grep -c "${SIGN_IDENTITY}"`, { stdio: "pipe" }).toString().trim();
+    return Number(out) > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Creates a stable self-signed code-signing identity in the login keychain.
+ * Without it, every ad-hoc re-sign invalidates the Accessibility grant the
+ * user gives the picker; with it, the grant survives rebuilds and upgrades.
+ */
+function ensureSigningIdentity() {
+  if (signingIdentityInstalled()) return true;
+  console.log(dim("Creating stable code-signing identity (\"" + SIGN_IDENTITY + "\")…"));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zhong-cert-"));
+  const key = path.join(dir, "key.pem");
+  const cert = path.join(dir, "cert.pem");
+  try {
+    execSync(
+      `openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes ` +
+        `-keyout "${key}" -out "${cert}" -subj "/CN=${SIGN_IDENTITY}/O=Zhong" ` +
+        `-addext "keyUsage=digitalSignature,keyEncipherment" ` +
+        `-addext "extendedKeyUsage=codeSigning" 2>/dev/null`
+    );
+    execSync(`security import "${key}" -k "${LOGIN_KEYCHAIN}" -T /usr/bin/codesign -T /usr/bin/security`);
+    execSync(`security import "${cert}" -k "${LOGIN_KEYCHAIN}" -T /usr/bin/codesign -T /usr/bin/security`);
+    fs.rmSync(dir, { recursive: true, force: true });
+    if (!signingIdentityInstalled()) {
+      console.error(err("Certificate created but not found as a codesigning identity."));
+      return false;
+    }
+    console.log(ok("Stable signing identity installed — Accessibility grants survive future rebuilds."));
+    return true;
+  } catch (e) {
+    console.error(err("Could not create signing identity:"), e.message);
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {}
+    return false;
+  }
+}
+
+function servicesRegistered() {
+  try {
+    const out = execSync(`"${LSREGISTER}" -dump 2>/dev/null | grep -c "ZhongService.app"`, { maxBuffer: 1024 * 1024 })
+      .toString()
+      .trim();
+    return Number(out) > 0;
+  } catch {
+    return false;
+  }
+}
+
+async function registerServices() {
+  if (!buildService()) process.exit(1);
+  try {
+    execSync(`"${LSREGISTER}" -f "${SERVICE_APP}"`, { stdio: "inherit" });
+  } catch (e) {
+    console.error(err("LaunchServices registration failed:"), e.message);
+    process.exit(1);
+  }
+  try {
+    execSync(`"${PBS}" -update`, { stdio: "inherit" });
+  } catch (e) {
+    console.error(err("Services database update failed:"), e.message);
+    process.exit(1);
+  }
+  // The menubar app no longer advertises the service — relaunch it so the
+  // pasteboard server drops its stale entry and only ZhongService provides it.
+  try {
+    execSync(`launchctl kickstart -k gui/${uid()}/com.zhong.menubar`, { stdio: "ignore" });
+  } catch {}
+  console.log(ok("Registered with macOS: right-click any selected text → Services → Teach with Zhōng."));
+  console.log("   Applies to every app (Safari, Notes, Pages, Word, Mail…).");
+  console.log("   For Chrome/Electron apps (no Services menu): System Settings → Keyboard →");
+  console.log("   Keyboard Shortcuts → Services → Text → assign a shortcut to \"Teach with Zhōng\".");
+  console.log(dim("   If it still doesn't appear, restart the app you're testing in (Services menus are cached per app)."));
+}
+
+function unregisterServices() {
+  try {
+    execSync(`"${LSREGISTER}" -u "${SERVICE_APP}" 2>/dev/null`, { stdio: "ignore" });
+  } catch {}
+  fs.rmSync(SERVICE_APP, { recursive: true, force: true });
+  try {
+    execSync(`"${PBS}" -update`, { stdio: "ignore" });
+  } catch {}
+  console.log(ok("Service removed."));
+}
+
+async function installPicker() {
+  ensureSigningIdentity();
+  if (!buildPicker()) process.exit(1);
+  try {
+    execSync(`launchctl bootout gui/${uid()} ${PICKER_PLIST}`, { stdio: "ignore" });
+  } catch {}
+  const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.zhong.picker</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${PICKER_BIN}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>${LOG_FILE}</string>
+  <key>StandardErrorPath</key>
+  <string>${ERR_FILE}</string>
+</dict>
+</plist>
+`;
+  fs.writeFileSync(PICKER_PLIST, plist, { mode: 0o644 });
+  execSync(`plutil -lint ${PICKER_PLIST}`, { stdio: "inherit" });
+  try {
+    execSync(`launchctl bootstrap gui/${uid()} ${PICKER_PLIST}`, { stdio: "inherit" });
+  } catch (e) {
+    console.error(err("launchctl failed for picker:"), e.message);
+    process.exit(1);
+  }
+  console.log(ok("Picker installed — a Zhōng pill now appears over Chinese text you select in ANY app."));
+  console.log("   Next, grant Accessibility access (one-time): the picker opened a window that");
+  console.log("   explains it — also available later:");
+  console.log("   System Settings → Privacy & Security → Accessibility → enable \"ZhongPicker\".");
+  spawn("open", ["x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"], {
+    detached: true,
+    stdio: "ignore",
+  }).unref();
+}
+
+function uninstallPicker() {
+  try {
+    execSync(`launchctl bootout gui/${uid()} ${PICKER_PLIST}`, { stdio: "ignore" });
+  } catch {}
+  fs.rmSync(PICKER_PLIST, { force: true });
+  try {
+    execSync(`pkill -x ZhongPicker 2>/dev/null`, { stdio: "ignore" });
+  } catch {}
+  console.log(ok("Picker removed."));
+}
+
+function uid() {
+  return process.getuid?.() ?? 501;
+}
+
+async function stopServer({ quiet = false } = {}) {
+  let stopped = false;
+  const pid = readPid();
+
+  if (startupInstalled()) {
+    // Managed by launchd — boot it out so KeepAlive doesn't restart it.
+    try {
+      execSync(`launchctl bootout gui/${uid()} ${plistPath()}`, { stdio: "ignore" });
+      stopped = true;
+    } catch {
+      /* not loaded — fall through */
+    }
+  }
+
+  if (pid && alive(pid)) {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {}
+    stopped = true;
+  }
+
+  killPort(PORT);
+  fs.rmSync(PID_FILE, { force: true });
+
+  if (!stopped && !quiet) console.log(dim("Server was not running."));
+  return stopped;
+}
+
+async function start({ quiet = false } = {}) {
+  ensureStateDir();
+  writeConfig();
+
+  if (await portOpen(PORT)) {
+    if (!quiet) console.log(ok("Already running."));
+    return "running";
+  }
+
+  if (startupInstalled()) {
+    // launchd owns this server — nudge it back to life instead of spawning a rival.
+    let up = false;
+    try {
+      execSync(`launchctl kickstart -k gui/${uid()}/com.zhong.server`, { stdio: "ignore" });
+      up = await waitPort(PORT, 10000);
+    } catch {}
+    if (!up) {
+      // Service may be unloaded (e.g. after `zhong stop`) — load it back.
+      try {
+        execSync(`launchctl bootstrap gui/${uid()} ${plistPath()}`, { stdio: "ignore" });
+        up = await waitPort(PORT, 25000);
+      } catch {}
+    }
+    if (up) {
+      if (!quiet) console.log(ok(`Running at ${URL} (launchd)`));
+      return "running";
+    }
+    console.error(err("launchd failed to start the server — run `zhong uninstall-startup` and retry."));
+    logs();
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(SERVER_ENTRY)) {
+    console.log(dim("First run — building app…"));
+    runBuild();
+  } else if (isStale()) {
+    console.log(dim("Sources changed — rebuilding…"));
+    runBuild();
+  }
+
+  const stale = readPid();
+  if (stale && alive(stale)) {
+    try {
+      process.kill(stale, "SIGTERM");
+    } catch {}
+    await new Promise((r) => setTimeout(r, 800));
+  }
+
+  const pid = startServer();
+  console.log(dim(`Starting server (pid ${pid})…`));
+  if (!(await waitPort(PORT))) {
+    console.error(err("Server failed to start — see:"), LOG_FILE, ERR_FILE);
+    logs();
+    process.exit(1);
+  }
+  if (!quiet) console.log(ok(`Running at ${URL}`));
+  return "started";
+}
+
+async function showStatus() {
+  const pid = readPid();
+  const up = await portOpen(PORT);
+  const startup = startupInstalled();
+
+  console.log(bold("zhong — status"));
+  console.log(`  app:       ${up ? ok("running") : err("stopped")}${up ? dim(`  (${URL})`) : ""}`);
+  if (up) {
+    if (pid && alive(pid)) console.log(`  process:   ${ok(`pid ${pid}`)}  (this CLI)`);
+    else if (startup) console.log(`  process:   ${dim("managed by launchd")}`);
+    else console.log(`  process:   ${dim("started outside this CLI")}`);
+  }
+  console.log(`  startup:   ${startup ? ok("installed (auto-starts at login)") : dim("not installed")}`);
+  console.log(`  menubar:   ${menubarInstalled() ? ok("installed (中 icon at login)") : dim("not installed")}`);
+  console.log(`  services:  ${servicesRegistered() ? ok("registered (Services menu)") : dim("not registered — run `zhong install-services`")}`);
+  const trust = pickerTrusted();
+  const pickerState = pickerInstalled()
+    ? `installed (selection pill ${pickerRunning() ? "· running" : "· not running"}${trust === null ? "" : trust ? " · access granted" : " · ACCESS NEEDED"})`
+    : "not installed — run `zhong install-picker`";
+  console.log(`  picker:    ${pickerInstalled() ? ok(pickerState) : dim(pickerState)}`);
+  console.log(`  state dir: ${dim(STATE_DIR)}`);
+}
+
+async function installStartup() {
+  ensureStateDir();
+  const node = process.execPath;
+  const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.zhong.server</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${node}</string>
+    <string>${SERVER_ENTRY}</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>${ROOT}</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>${LOG_FILE}</string>
+  <key>StandardErrorPath</key>
+  <string>${ERR_FILE}</string>
+</dict>
+</plist>
+`;
+
+  fs.writeFileSync(plistPath(), plist, { mode: 0o644 });
+  execSync(`plutil -lint ${plistPath()}`, { stdio: "inherit" });
+
+  if (plistPath() === PLIST_DEFAULT) {
+    writeConfig();
+    // Hand control to launchd cleanly: stop CLI/old instances first, then load the job.
+    await stopServer({ quiet: true });
+    try {
+      execSync(`launchctl bootstrap gui/${uid()} ${plistPath()}`, { stdio: "inherit" });
+    } catch (e) {
+      console.error(err("launchctl failed:"), e.message);
+      process.exit(1);
+    }
+    console.log(ok("Startup item installed — the app auto-starts at login and stays alive."));
+    console.log("  Run " + bold("zhong") + " next time to just open the browser.");
+    if (!(await portOpen(PORT))) {
+      if (await waitPort(PORT, 30000)) console.log(ok(`launchd started it — ${URL}`));
+      else console.error(err("launchd launched but the server is not answering yet — check `zhong logs`."));
+    }
+
+    if (buildMenubar()) {
+      const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.zhong.menubar</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${MENUBAR_BIN}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>${LOG_FILE}</string>
+  <key>StandardErrorPath</key>
+  <string>${ERR_FILE}</string>
+</dict>
+</plist>
+`;
+      fs.writeFileSync(MENUBAR_PLIST, plist, { mode: 0o644 });
+      execSync(`plutil -lint ${MENUBAR_PLIST}`, { stdio: "inherit" });
+      try {
+        execSync(`launchctl bootout gui/${uid()} ${MENUBAR_PLIST}`, { stdio: "ignore" });
+      } catch {}
+      try {
+        execSync(`launchctl bootstrap gui/${uid()} ${MENUBAR_PLIST}`, { stdio: "inherit" });
+      } catch (e) {
+        console.error(err("launchctl failed for menubar app:"), e.message);
+        process.exit(1);
+      }
+      console.log(ok(`Menubar icon (中) installed — look for it in the menu bar at the top right.`));
+    }
+    registerServices().catch(() => {});
+  } else {
+    console.log(dim(`Plist written to ${plistPath()} (custom path, launchctl skipped).`));
+  }
+}
+
+async function uninstallStartup() {
+  if (plistPath() !== PLIST_DEFAULT) {
+    fs.rmSync(plistPath(), { force: true });
+    console.log(ok(`Custom plist removed (${plistPath()}).`));
+    return;
+  }
+  for (const p of [MENUBAR_PLIST, PLIST_DEFAULT]) {
+    try {
+      execSync(`launchctl bootout gui/${uid()} ${p}`, { stdio: "ignore" });
+    } catch {}
+    fs.rmSync(p, { force: true });
+  }
+  try {
+    execSync(`osascript -e 'quit app "ZhongMenubar"'`, { stdio: "ignore" });
+  } catch {}
+  console.log(ok("Startup items removed (server + menubar)."));
+}
+
+function logs(n = 50) {
+  for (const f of [LOG_FILE, ERR_FILE]) {
+    if (fs.existsSync(f)) {
+      console.log(dim(`— ${f} (last ${n} lines) —`));
+      execSync(`tail -n ${n} "${f}"`, { stdio: "inherit" });
+    }
+  }
+}
+
+function dev() {
+  ensureStateDir();
+  if (startupInstalled()) {
+    console.log(dim("Note: the startup item is running on :4450 — dev mode uses :5173."));
+  }
+  const child = spawn("npm", ["run", "dev"], { cwd: ROOT, stdio: "inherit" });
+  waitPort(WEB_PORT, 30000).then((up) => {
+    if (up) openBrowser(`http://localhost:${WEB_PORT}`);
+  });
+  child.on("exit", (code) => {
+    process.exit(code ?? 0);
+  });
+}
+
+function help() {
+  console.log(`
+${bold("zhong")} — your Chinese study companion
+
+Usage:
+  ${bold("zhong")}                  start the app (builds if needed) and open the browser
+  ${bold("zhong dev")}             run in development mode (hot reload)
+  ${bold("zhong stop")}            stop the background server
+  ${bold("zhong restart")}         restart the background server and open the browser
+  ${bold("zhong status")}          show server + startup status
+  ${bold("zhong build")}           rebuild server and web
+  ${bold("zhong menubar")}         launch the menubar app (中 icon, controls server)
+  ${bold("zhong install-services")}  register the right-click service with macOS (all apps)
+  ${bold("zhong uninstall-services")}  remove the right-click service
+  ${bold("zhong install-picker")}    install the selection pill (PopClip-style, any app + Chrome)
+  ${bold("zhong uninstall-picker")}  remove the selection pill
+  ${bold("zhong install-cert")}     create the stable code-signing identity (keeps Accessibility grants valid)
+  ${bold("zhong install-startup")} auto-start the app at login (launchd: server + menubar)
+  ${bold("zhong uninstall-startup")}  remove the login startup items
+  ${bold("zhong logs")}            tail the last 50 log lines
+`);
+}
+
+async function main() {
+  const cmd = process.argv[2];
+  switch (cmd) {
+    case undefined:
+    case "start":
+    case "open":
+      await start();
+      openBrowser(URL);
+      break;
+    case "dev":
+      dev();
+      break;
+    case "stop":
+      await stopServer();
+      break;
+    case "restart":
+      await stopServer({ quiet: true });
+      await start();
+      openBrowser(URL);
+      break;
+    case "status":
+      await showStatus();
+      break;
+    case "build":
+      runBuild();
+      break;
+    case "install-startup":
+      await installStartup();
+      break;
+    case "uninstall-startup":
+      await uninstallStartup();
+      break;
+    case "menubar":
+      if (!buildMenubar()) process.exit(1);
+      spawn("open", [MENUBAR_APP], { detached: true, stdio: "ignore" }).unref();
+      console.log(ok("Menubar app launched — look for the 中 icon in the menu bar."));
+      break;
+    case "install-services":
+      await registerServices();
+      break;
+    case "uninstall-services":
+      unregisterServices();
+      break;
+    case "install-picker":
+      await installPicker();
+      break;
+    case "install-cert":
+      if (ensureSigningIdentity()) console.log(ok("Signing identity ready."));
+      else process.exit(1);
+      break;
+    case "uninstall-picker":
+      uninstallPicker();
+      break;
+    case "logs":
+      logs();
+      break;
+    case "help":
+    case "-h":
+    case "--help":
+      help();
+      break;
+    default:
+      console.error(err(`Unknown command: ${cmd}`));
+      help();
+      process.exit(1);
+  }
+}
+
+main().catch((e) => {
+  console.error(err(`error: ${e.message}`));
+  process.exit(1);
+});

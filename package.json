@@ -6,6 +6,9 @@
   "workspaces": [
     "apps/*"
   ],
+  "bin": {
+    "zhong": "bin/zhong"
+  },
   "scripts": {
     "dev": "concurrently -n server,web -c red,cyan \"npm:dev -w @zhong/server\" \"npm:dev -w @zhong/web\"",
     "build": "npm run build -w @zhong/server && npm run build -w @zhong/web",

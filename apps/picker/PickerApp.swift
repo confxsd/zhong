@@ -49,6 +49,7 @@ final class PickerController: NSObject {
     private var fallbackRequested = false
     private var lastFrontApp = ""
     private var pollTimer: Timer?
+    private var eventMonitors: [Any] = []
     private let axQueue = DispatchQueue(label: "zhong.ax", qos: .userInitiated)
 
     private static let logURL = FileManager.default.homeDirectoryForCurrentUser
@@ -121,6 +122,15 @@ final class PickerController: NSObject {
         NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseUp]) { [weak self] _ in
             self?.fallbackRequested = true
         }
+
+        // Escape is the keyboard equivalent of the explicit close control.
+        // The global monitor observes the key without consuming it from the
+        // active application, so the picker adds no keyboard side effects.
+        let escapeMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] event in
+            guard event.keyCode == 53 else { return }
+            DispatchQueue.main.async { self?.dismiss() }
+        }
+        if let escapeMonitor { eventMonitors.append(escapeMonitor) }
     }
 
     // MARK: - Selection scanning

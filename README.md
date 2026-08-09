@@ -5,8 +5,8 @@ get a fast beginner-friendly explanation, and save the useful words for review.
 
 ![Inline quick lesson](docs/screenshots/selection-lesson.png)
 
-The native picker reads selections across macOS apps, including Chrome and
-Electron apps. It renders the first lesson in place instead of forcing a
+The native picker reads selections across macOS apps, including Electron
+apps. It renders the first lesson in place instead of forcing a
 browser redirect.
 
 ![Vocabulary library](docs/screenshots/library.png)
@@ -20,7 +20,7 @@ browser redirect.
 - Dark responsive web library and review experience
 - Provider-agnostic AI layer: DeepSeek, OpenAI, Ollama, Groq, and other
   OpenAI-compatible APIs
-- Chrome right-click extension and native macOS Services integration
+- Native macOS Services integration
 - Native menubar app with background server control
 
 ## Quick Start
@@ -97,14 +97,6 @@ This installs `ZhongService.app` into `~/Library/Services`. In apps that expose
 Services, select text and choose **Services → Teach with Zhōng**. Chrome and
 some Electron apps hide that menu; use the Instant Picker instead.
 
-### Chrome Extension
-
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Choose **Load unpacked** and select `extensions/chrome`.
-4. Select Chinese text and choose **仲 Zhōng — teach this text** from the
-   context menu.
-
 ## AI Providers
 
 DeepSeek is the default:
@@ -142,7 +134,6 @@ apps/web/          React, Vite, Tailwind, library and review UI
 apps/picker/       Native macOS selection overlay
 apps/menubar/      Native macOS menubar app
 apps/service/      Native macOS Services host
-extensions/chrome/ Manifest V3 selection context menu
 bin/zhong          Global macOS lifecycle CLI
 ```
 

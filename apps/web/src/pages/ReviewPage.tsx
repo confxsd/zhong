@@ -126,20 +126,20 @@ export default function ReviewPage() {
 
       {card && (
         <div key={card.id} className="anim-pop" onClick={() => setFlipped((f) => !f)}>
-          <div className="flex min-h-72 cursor-pointer flex-col items-center justify-center rounded-3xl border border-line bg-paper p-8 text-center shadow-lg shadow-black/5 transition hover:shadow-xl hover:shadow-black/10 dark:shadow-black/40">
-            <span className="mb-3 rounded-full bg-surface px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-soft">
+          <div className="flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-[2rem] bg-paper p-8 text-center transition hover:bg-surface/40">
+            <span className="mb-4 rounded-full bg-surface px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-soft">
               {flipped ? "answer" : "tap to reveal"}
             </span>
 
-            <div className={`font-cn text-6xl font-bold leading-none tracking-wide md:text-7xl ${flipped ? "text-accent" : ""}`}>{card.hanzi}</div>
+            <div className={`font-cn text-7xl font-bold leading-none tracking-wide md:text-8xl ${flipped ? "text-accent" : ""}`}>{card.hanzi}</div>
 
-            <div className="mt-6 h-24 w-full">
+            <div className="mt-8 h-24 w-full">
               {flipped ? (
                 <div className="anim-rise space-y-2">
-                  <div className="text-lg font-semibold">{card.pinyin}</div>
+                  <div className="text-lg font-semibold text-accent">{card.pinyin}</div>
                   <div className="text-[15px] text-soft">{card.meaning}</div>
                   {card.example && (
-                    <div className="mx-auto max-w-sm rounded-xl bg-surface/70 px-3 py-2 text-sm">
+                    <div className="mx-auto max-w-sm rounded-2xl bg-surface px-3.5 py-2.5 text-sm">
                       <span className="font-cn-sans">{card.example}</span>
                       {card.example_trans && <span className="block text-xs text-soft">{card.example_trans}</span>}
                     </div>
@@ -159,14 +159,12 @@ export default function ReviewPage() {
             key={g.key}
             onClick={() => grade.mutate({ id: card.id, g: g.key })}
             disabled={grade.isPending}
-            className={`rounded-xl border px-2 py-3 text-sm font-semibold transition disabled:opacity-50 ${
+            className={`rounded-2xl px-2 py-3 text-sm font-semibold transition disabled:opacity-50 ${
               g.tone === "hard"
-                ? "border-red-300 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300 dark:hover:bg-red-950"
+                ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-950/60 dark:text-red-300 dark:hover:bg-red-950"
                 : g.tone === "neutral"
-                  ? "border-line bg-paper text-soft hover:text-ink"
-                  : g.tone === "good"
-                    ? "border-jade/40 bg-jade-soft text-jade hover:brightness-105"
-                    : "border-jade/60 bg-jade-soft text-jade hover:brightness-105 dark:border-jade"
+                  ? "bg-surface text-soft hover:bg-surface-strong hover:text-ink"
+                  : "bg-jade-soft text-jade hover:bg-jade-strong"
             }`}
           >
             {g.label}

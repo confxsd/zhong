@@ -1,12 +1,12 @@
-import { AlertCircle, BookMarked, Check, ChevronDown } from "lucide-react";
-import { type ComponentType, type ReactNode, useState } from "react";
+import { AlertCircle, BookMarked, Check } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { NavLink } from "react-router-dom";
 import type { Breakdown, Segments, SessionDetail, TeachResult, VocabResult } from "../types";
 
 function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <section className="anim-rise rounded-2xl border border-line bg-paper p-5 shadow-sm shadow-black/5 dark:shadow-black/25">
-      <div className="mb-3 flex items-center justify-between gap-2">
+    <section className="anim-rise rounded-3xl bg-paper p-5 md:p-6">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="text-sm font-bold uppercase tracking-wider text-soft">{title}</h3>
         {action}
       </div>
@@ -25,7 +25,7 @@ function CopyButton({ text, label = "copy" }: { text: string; label?: string }) 
           setTimeout(() => setCopied(false), 1500);
         });
       }}
-      className="rounded-md px-2 py-1 text-xs font-medium text-soft transition hover:bg-surface hover:text-ink"
+      className="rounded-lg px-2 py-1 text-xs font-medium text-soft transition hover:bg-surface hover:text-ink"
     >
       {copied ? <Check size={14} className="text-jade" /> : label}
     </button>
@@ -34,46 +34,39 @@ function CopyButton({ text, label = "copy" }: { text: string; label?: string }) 
 
 function VocabChip({ v }: { v: VocabResult }) {
   return (
-    <div className="anim-pop rounded-xl border border-jade/30 bg-jade-soft px-3 py-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="font-cn text-lg font-bold">{v.hanzi}</span>
-        <span className="text-xs text-soft">{v.pinyin}</span>
+    <div className="anim-pop rounded-2xl bg-jade-soft p-4">
+      <div className="flex items-baseline gap-3">
+        <span className="font-cn text-xl font-bold leading-none">{v.hanzi}</span>
+        <span className="text-xs font-medium text-jade">{v.pinyin}</span>
       </div>
-      <div className="mt-0.5 text-xs text-ink/80">{v.meaning}</div>
+      <div className="mt-1.5 text-[13px] text-ink/80">{v.meaning}</div>
       {v.example && (
-        <div className="mt-1.5 border-t border-jade/15 pt-1.5 text-xs leading-relaxed">
+        <div className="mt-2.5 rounded-xl bg-paper/70 p-2.5 text-xs leading-relaxed">
           <span className="font-cn-sans text-[13px] font-medium">{v.example}</span>
-          {v.example_translation && <div className="text-soft">{v.example_translation}</div>}
+          {v.example_translation && <div className="mt-0.5 text-soft">{v.example_translation}</div>}
         </div>
       )}
     </div>
   );
 }
 
-function BreakdownTile({ item, icon: _icon }: { item: Breakdown; icon?: ComponentType<{ size?: number }> }) {
+function BreakdownTile({ item }: { item: Breakdown }) {
   return (
-    <div className="rounded-xl border border-line bg-paper p-3 transition hover:border-accent/40 hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/30">
-      <div className="font-cn text-2xl font-bold leading-none">{item.char}</div>
-      <div className="mt-1.5 text-xs font-medium text-accent">{item.pinyin}</div>
-      <div className="mt-0.5 text-[13px] leading-snug">{item.meaning}</div>
-      {item.note && <div className="mt-1.5 border-t border-line pt-1.5 text-xs leading-relaxed text-soft">{item.note}</div>}
+    <div className="rounded-2xl bg-surface p-3.5 transition hover:bg-surface-strong">
+      <div className="font-cn text-3xl font-bold leading-none">{item.char}</div>
+      <div className="mt-2 text-xs font-semibold text-accent">{item.pinyin}</div>
+      <div className="mt-1 text-[13px] leading-snug">{item.meaning}</div>
+      {item.note && <div className="mt-2 text-xs leading-relaxed text-soft">{item.note}</div>}
     </div>
   );
 }
 
 function SegmentRow({ seg }: { seg: Segments }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl border border-line">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-surface"
-      >
-        <span className="font-cn text-lg font-semibold">{seg.text}</span>
-        <span className="text-xs text-soft">{seg.pinyin}</span>
-        <span className="flex-1 text-sm text-soft">{seg.literal}</span>
-        <ChevronDown size={15} className={`text-soft transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
+    <div className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3">
+      <span className="font-cn text-lg font-semibold">{seg.text}</span>
+      <span className="text-xs font-medium text-accent">{seg.pinyin}</span>
+      <span className="flex-1 text-right text-sm text-soft">{seg.literal}</span>
     </div>
   );
 }
@@ -81,30 +74,33 @@ function SegmentRow({ seg }: { seg: Segments }) {
 export default function ResultView({ result }: { result: TeachResult | SessionDetail }) {
   const vocab = "vocab" in result ? result.vocab : [];
   const text = "text" in result ? result.text : result.input_text;
+  const hasChinese = /[\u4e00-\u9fff]/.test(text);
+  const displayText = hasChinese ? text : result.translation;
+  const meaningText = hasChinese ? result.translation : text;
 
   return (
     <div className="space-y-4">
       <Card
-        title="Translation · 翻译"
-        action={<CopyButton text={`${text}\n${result.pinyin}\n${result.translation}`} label="copy all" />}
+        title={hasChinese ? "Translation · 翻译" : "How to say it · 怎么说"}
+        action={<CopyButton text={`${displayText}\n${result.pinyin}\n${meaningText}`} label="copy all" />}
       >
-        <p className="font-cn text-xl font-semibold leading-relaxed md:text-2xl">{text}</p>
-        <p className="mt-1.5 text-sm text-soft">{result.pinyin}</p>
-        <p className="mt-3 border-t border-line pt-3 text-[15px] leading-relaxed">{result.translation}</p>
+        <p className="font-cn text-2xl font-semibold leading-relaxed md:text-3xl">{displayText}</p>
+        <p className="mt-2 text-[15px] font-medium text-accent">{result.pinyin}</p>
+        <p className="mt-4 text-[15px] leading-relaxed">{meaningText}</p>
       </Card>
 
       {result.recognized.length > 0 && (
         <Card title="Already in your memory · 你学过">
           <div className="flex flex-wrap gap-2">
             {result.recognized.map((w) => (
-              <span key={w.hanzi} className="flex items-center gap-1.5 rounded-full border border-amber/40 bg-amber-soft px-3 py-1 text-sm">
+              <span key={w.hanzi} className="flex items-center gap-1.5 rounded-full bg-amber-soft px-3 py-1 text-sm">
                 <BookMarked size={14} className="text-amber" />
                 <span className="font-cn font-semibold">{w.hanzi}</span>
                 <span className="text-soft">{w.meaning}</span>
               </span>
             ))}
           </div>
-          <p className="mt-2 text-xs text-soft">Words you already know that appear here — the tutor built on these.</p>
+          <p className="mt-2.5 text-xs text-soft">Words you already know that appear here — the tutor built on these.</p>
         </Card>
       )}
 
@@ -130,13 +126,13 @@ export default function ResultView({ result }: { result: TeachResult | SessionDe
 
       {result.grammar.length > 0 && (
         <Card title="Grammar · 语法" action={<CopyButton text={result.grammar.map((g) => `${g.point}: ${g.explanation}`).join("\n")} />}>
-          <ul className="space-y-3">
+          <ul className="space-y-3.5">
             {result.grammar.map((g, i) => (
               <li key={i} className="flex gap-3">
-                <span className="mt-1 flex h-2 w-2 shrink-0 rounded-full bg-accent" />
+                <span className="mt-2 flex h-2 w-2 shrink-0 rounded-full bg-accent" />
                 <div>
                   <div className="text-sm font-bold">{g.point}</div>
-                  <div className="mt-0.5 text-sm leading-relaxed text-soft">{g.explanation}</div>
+                  <div className="mt-0.5 text-[15px] leading-relaxed text-soft">{g.explanation}</div>
                 </div>
               </li>
             ))}

@@ -38,7 +38,7 @@ export default function HistoryPage() {
       {isLoading && <div className="py-16 text-center text-sm text-soft">Loading…</div>}
 
       {!isLoading && rows.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line py-16 text-center">
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
           <Clock size={32} className="text-soft/50" />
           <div className="text-sm text-soft">Nothing here yet — your study sessions will show up automatically.</div>
           <Link to="/" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
@@ -49,7 +49,7 @@ export default function HistoryPage() {
 
       <div className="space-y-2">
         {rows.map((s) => (
-          <div key={s.id} className="group flex items-center gap-4 rounded-2xl border border-line bg-paper px-4 py-3 transition hover:border-accent/40 hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/25">
+          <div key={s.id} className="group flex items-center gap-4 rounded-2xl bg-paper px-4 py-3.5 transition hover:bg-surface">
             <Link to={`/history/${s.id}`} className="flex min-w-0 flex-1 items-center gap-4">
               <span className="font-cn flex-1 truncate text-[15px] font-medium">{s.input_text}</span>
               <span className="hidden max-w-60 truncate text-sm text-soft md:block">{s.translation}</span>

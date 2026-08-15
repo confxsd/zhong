@@ -26,13 +26,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((t) => (
           <div
             key={t.id}
-            className={`anim-pop pointer-events-auto flex items-center gap-2 rounded-full border px-4 py-2 text-sm shadow-lg backdrop-blur ${
-              t.kind === "error"
-                ? "border-red-300 bg-red-50/95 text-red-700 dark:border-red-800 dark:bg-red-950/95 dark:text-red-300"
-                : "border-line bg-paper/95 text-ink shadow-black/10 dark:shadow-black/40"
+            className={`anim-pop pointer-events-auto flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white ${
+              t.kind === "error" ? "bg-red-600" : "bg-ink"
             }`}
           >
-            {t.kind === "error" ? <XCircle size={15} className="shrink-0 text-red-500" /> : <CheckCircle2 size={15} className="shrink-0 text-jade" />}
+            {t.kind === "error" ? <XCircle size={15} className="shrink-0" /> : <CheckCircle2 size={15} className="shrink-0 text-jade" />}
             <span className="max-w-[70vw]">{t.message}</span>
           </div>
         ))}

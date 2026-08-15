@@ -26,7 +26,7 @@ export default function HistoryDetailPage() {
       {isLoading && <div className="py-16 text-center text-sm text-soft">Loading session…</div>}
 
       {isError && (
-        <div className="rounded-2xl border border-red-300 bg-red-50 p-6 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
+        <div className="rounded-2xl bg-red-50 p-6 text-sm text-red-700 dark:bg-red-950/60 dark:text-red-300">
           Couldn't load this session. It may have been deleted.
         </div>
       )}

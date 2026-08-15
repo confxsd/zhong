@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Clock,
+  GraduationCap,
   Languages,
   Library,
   Moon,
   RotateCcw,
-  Sparkles,
   Sun,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -18,7 +18,7 @@ import ReviewPage from "./pages/ReviewPage";
 import TranslatePage from "./pages/TranslatePage";
 
 const NAV = [
-  { to: "/", label: "Study", cn: "学习", icon: Sparkles, end: true },
+  { to: "/", label: "Study", cn: "学习", icon: GraduationCap, end: true },
   { to: "/library", label: "Library", cn: "词库", icon: Library },
   { to: "/review", label: "Review", cn: "复习", icon: RotateCcw },
   { to: "/history", label: "History", cn: "记录", icon: Clock },
@@ -29,7 +29,7 @@ function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }
     <button
       onClick={onToggle}
       aria-label="Toggle dark mode"
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-paper text-soft transition hover:text-accent"
+      className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface text-soft transition hover:bg-surface-strong hover:text-ink"
     >
       {dark ? <Sun size={16} /> : <Moon size={16} />}
     </button>
@@ -44,7 +44,7 @@ function SidebarContent({ dark, onToggle }: { dark: boolean; onToggle: () => voi
   return (
     <div className="flex h-full flex-col">
       <NavLink to="/" className="flex items-center gap-3 px-4 pb-6 pt-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent font-cn text-2xl font-bold text-white shadow-md shadow-accent/30">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent font-cn text-2xl font-bold text-white">
           仲
         </div>
         <div>
@@ -62,7 +62,7 @@ function SidebarContent({ dark, onToggle }: { dark: boolean; onToggle: () => voi
             className={({ isActive }) =>
               `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                 isActive
-                  ? "bg-accent text-white shadow-md shadow-accent/25"
+                  ? "bg-accent text-white"
                   : "text-soft hover:bg-surface hover:text-ink"
               }`
             }
@@ -83,19 +83,19 @@ function SidebarContent({ dark, onToggle }: { dark: boolean; onToggle: () => voi
         ))}
       </nav>
 
-      <div className="border-t border-line px-4 py-4">
+      <div className="px-4 py-4">
         <div className="mb-3 grid grid-cols-3 gap-2 text-center">
-          <button onClick={() => navigate("/library")} title="Words in library" className="rounded-lg bg-surface px-1 py-2 transition hover:bg-line">
+          <button onClick={() => navigate("/library")} title="Words in library" className="rounded-xl bg-surface px-1 py-2 transition hover:bg-surface-strong">
             <div className="text-sm font-bold text-ink">{stats ? stats.totalVocab : "–"}</div>
             <div className="text-[10px] text-soft">words</div>
           </button>
-          <button onClick={() => navigate("/review")} title="Due for review" className="rounded-lg bg-surface px-1 py-2 transition hover:bg-line">
+          <button onClick={() => navigate("/review")} title="Due for review" className="rounded-xl bg-surface px-1 py-2 transition hover:bg-surface-strong">
             <div className={`text-sm font-bold ${stats && stats.due > 0 ? "text-accent" : "text-ink"}`}>
               {stats ? stats.due : "–"}
             </div>
             <div className="text-[10px] text-soft">due</div>
           </button>
-          <button onClick={() => navigate("/history")} title="Study sessions" className="rounded-lg bg-surface px-1 py-2 transition hover:bg-line">
+          <button onClick={() => navigate("/history")} title="Study sessions" className="rounded-xl bg-surface px-1 py-2 transition hover:bg-surface-strong">
             <div className="text-sm font-bold text-ink">{stats ? stats.sessions : "–"}</div>
             <div className="text-[10px] text-soft">sessions</div>
           </button>
@@ -103,7 +103,7 @@ function SidebarContent({ dark, onToggle }: { dark: boolean; onToggle: () => voi
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-soft">
             <Languages size={14} />
-            zh → en
+            zh ⇄ en
           </div>
           <ThemeToggle dark={dark} onToggle={onToggle} />
         </div>
@@ -125,7 +125,7 @@ function AppShell() {
 
   return (
     <div className="flex h-full">
-      <aside className="hidden w-60 shrink-0 border-r border-line bg-paper md:block">
+      <aside className="hidden w-60 shrink-0 bg-paper md:block">
         <SidebarContent dark={dark} onToggle={() => setDark((d) => !d)} />
       </aside>
 
@@ -137,7 +137,7 @@ function AppShell() {
         </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t border-line bg-paper/95 px-2 py-2 backdrop-blur md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around bg-paper px-2 py-2 md:hidden">
         {NAV.map((item) => (
           <NavLink
             key={item.to}

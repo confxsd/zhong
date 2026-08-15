@@ -10,7 +10,7 @@ export default function ProviderBanner() {
   const varName = data.provider.name === "openai" ? "OPENAI_API_KEY" : data.provider.name === "openai-compatible" ? "AI_API_KEY" : "DEEPSEEK_API_KEY";
 
   return (
-    <div className="anim-rise mb-5 rounded-2xl border border-amber/50 bg-amber-soft p-4">
+    <div className="anim-rise mb-5 rounded-2xl bg-amber-soft p-4">
       <div className="flex items-start gap-3">
         <KeyRound size={18} className="mt-0.5 shrink-0 text-amber" />
         <div className="text-sm leading-relaxed">

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, Flame, Sparkles, Wand2 } from "lucide-react";
+import { BookOpen, Clock, Flame, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
@@ -13,6 +13,8 @@ const SAMPLES = [
   "我还没有吃晚饭。",
   "这个字是什么意思？",
   "天气越来越冷了，记得多穿衣服。",
+  "Good luck!",
+  "It was so nice to meet you.",
 ];
 
 function countChinese(text: string): number {
@@ -72,14 +74,14 @@ export default function TranslatePage() {
     <div>
       <ProviderBanner />
 
-      <header className="mb-5">
+      <header className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
           Study <span className="font-cn text-accent">学习</span>
         </h1>
-        <p className="mt-1 text-sm text-soft">Paste any Chinese text — Zhong explains it like a real tutor, remembers the words, and quizzes you later.</p>
+        <p className="mt-1 text-sm text-soft">Paste Chinese to understand it, or English to learn how to say it in Chinese — Zhong teaches both ways, remembers your words, and quizzes you later.</p>
       </header>
 
-      <div className="anim-rise rounded-2xl border border-line bg-paper p-4 shadow-sm shadow-black/5 md:p-5 dark:shadow-black/25">
+      <div className="anim-rise rounded-3xl bg-paper p-4 md:p-6">
         <textarea
           ref={inputRef}
           value={text}
@@ -92,29 +94,33 @@ export default function TranslatePage() {
           }}
           placeholder="例如：我又想起来了，那个地方我们去年去过。"
           rows={5}
-          className="w-full resize-y rounded-xl border border-line bg-canvas/60 p-3.5 text-[15px] leading-relaxed outline-none transition placeholder:text-soft/70 focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+          className="w-full resize-y rounded-2xl bg-surface p-4 text-[15px] leading-relaxed outline-none transition placeholder:text-soft/70 focus:bg-surface-strong"
         />
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3.5 flex flex-wrap items-center gap-2">
           <button
             onClick={submit}
             disabled={translate.isPending}
-            className="flex items-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-accent/25 transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-2xl bg-accent px-5 py-3 text-[15px] font-semibold text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
           >
             {translate.isPending ? (
-              <Wand2 size={16} className="animate-pulse" />
+              <Loader2 size={17} className="animate-spin" />
             ) : (
-              <Sparkles size={16} />
+              <BookOpen size={17} />
             )}
             {translate.isPending ? "Teaching…" : "Teach me"}
           </button>
           <span className="text-xs text-soft">⌘/Ctrl + Enter</span>
-          <span className="ml-auto font-mono text-xs text-soft">
-            {cnCount} <span className="font-cn">字</span> · {text.length} chars
+          <span className="ml-auto text-xs font-medium text-soft">
+            {cnCount > 0 ? (
+              <>{cnCount} <span className="font-cn">字</span> · zh → en</>
+            ) : text.trim() ? (
+              <>en → <span className="font-cn">中文</span></>
+            ) : null}
           </span>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-line pt-3">
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-xs text-soft">Try:</span>
           {SAMPLES.map((s) => (
             <button
@@ -123,7 +129,7 @@ export default function TranslatePage() {
                 setText(s);
                 inputRef.current?.focus();
               }}
-              className="font-cn rounded-full border border-line bg-canvas/50 px-3 py-1 text-sm text-soft transition hover:border-accent/50 hover:text-ink"
+              className="font-cn rounded-full bg-surface px-3.5 py-1.5 text-sm text-soft transition hover:bg-accent-soft hover:text-accent"
             >
               {s}
             </button>
@@ -131,16 +137,16 @@ export default function TranslatePage() {
         </div>
 
         {error && (
-          <div className="anim-pop mt-4 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
+          <div className="anim-pop mt-4 rounded-2xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/60 dark:text-red-300">
             {error}
           </div>
         )}
       </div>
 
       {translate.isPending && (
-        <div className="anim-rise mt-5 rounded-2xl border border-line bg-paper p-6">
+        <div className="anim-rise mt-4 rounded-3xl bg-paper p-5">
           <div className="flex items-center gap-3">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <Loader2 size={20} className="animate-spin text-accent" />
             <div>
               <div className="text-sm font-semibold">Teaching…</div>
               <div className="text-xs text-soft">Breaking down the characters, grammar, and useful vocabulary.</div>
@@ -151,14 +157,12 @@ export default function TranslatePage() {
 
       {result && !translate.isPending && (
         <div className="mt-5">
-          {cnCount > 0 && cnCount < 60 && (
-            <p className="mb-3 text-xs leading-relaxed text-soft">
-              {newWords > 0
-                ? `Zhong found ${newWords} new word${newWords > 1 ? "s" : ""} and added ${newWords > 1 ? "them" : "it"} to your library below.`
-                : "No new words to save this time — everything here was already in your memory or above beginner level."}
-              {result.recognized.length > 0 && ` It also spotted ${result.recognized.length} word${result.recognized.length > 1 ? "s" : ""} you've already studied.`}
-            </p>
-          )}
+          <p className="mb-3 text-xs leading-relaxed text-soft">
+            {newWords > 0
+              ? `Zhong found ${newWords} new word${newWords > 1 ? "s" : ""} and added ${newWords > 1 ? "them" : "it"} to your library below.`
+              : "No new words to save this time — everything here was already in your memory or above beginner level."}
+            {result.recognized.length > 0 && ` It also spotted ${result.recognized.length} word${result.recognized.length > 1 ? "s" : ""} you've already studied.`}
+          </p>
           <ResultView result={result} />
         </div>
       )}
@@ -173,7 +177,7 @@ export default function TranslatePage() {
               <Link
                 key={s.id}
                 to={`/history/${s.id}`}
-                className="group flex items-center gap-4 rounded-xl border border-line bg-paper px-4 py-3 transition hover:border-accent/40 hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/25"
+                className="group flex items-center gap-4 rounded-2xl bg-paper px-4 py-3.5 transition hover:bg-surface"
               >
                 <span className="font-cn flex-1 truncate text-[15px] font-medium">{s.input_text}</span>
                 <span className="hidden max-w-56 truncate text-sm text-soft sm:block">{s.translation}</span>

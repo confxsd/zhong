@@ -69,21 +69,21 @@ export default function LibraryPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-52 flex-1">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-soft" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-soft" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search hanzi, pinyin, or meaning…"
-            className="w-full rounded-xl border border-line bg-paper py-2 pl-9 pr-3 text-sm outline-none transition placeholder:text-soft/60 focus:border-accent/60 focus:ring-2 focus:ring-accent/20"
+            className="w-full rounded-xl bg-surface py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-soft/60 focus:bg-surface-strong"
           />
         </div>
-        <div className="flex rounded-xl border border-line bg-paper p-0.5">
+        <div className="flex rounded-xl bg-surface p-1">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
               className={`rounded-[10px] px-3 py-1.5 text-sm font-medium transition ${
-                filter === f.key ? "bg-accent text-white shadow" : "text-soft hover:text-ink"
+                filter === f.key ? "bg-accent text-white" : "text-soft hover:text-ink"
               }`}
             >
               {f.label}
@@ -96,7 +96,7 @@ export default function LibraryPage() {
       {isLoading && <div className="py-16 text-center text-sm text-soft">Loading…</div>}
 
       {!isLoading && rows.length === 0 && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line py-16 text-center">
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
           <BookOpen size={32} className="text-soft/50" />
           <div className="text-sm text-soft">
             {search || filter !== "all" ? "Nothing matches — try a different filter." : "No words yet. Study a sentence and your vocabulary grows here automatically."}
@@ -112,8 +112,8 @@ export default function LibraryPage() {
           const open = expanded === w.id;
           const dueSoon = w.next_review_at && new Date(w.next_review_at).getTime() <= Date.now();
           return (
-            <div key={w.id} className={`rounded-2xl border bg-paper transition ${open ? "border-accent/50 shadow-md shadow-black/5 dark:shadow-black/30" : "border-line"}`}>
-              <div className="flex items-center gap-3 px-4 py-3">
+            <div key={w.id} className="rounded-2xl bg-paper transition">
+              <div className="flex items-center gap-3 px-4 py-3.5">
                 <button onClick={() => setExpanded(open ? null : w.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                   <span className="font-cn text-xl font-bold leading-none">{w.hanzi}</span>
                   <span className="hidden w-24 shrink-0 text-xs text-soft sm:block">{w.pinyin}</span>
@@ -141,8 +141,8 @@ export default function LibraryPage() {
               </div>
 
               {open && (
-                <div className="anim-rise border-t border-line px-4 pb-4 pt-3">
-                  <div className="grid gap-3 text-sm sm:grid-cols-2">
+                <div className="anim-rise px-3 pb-3">
+                  <div className="grid gap-3 rounded-2xl bg-surface p-4 text-sm sm:grid-cols-2">
                     <div>
                       <div className="text-xs font-bold uppercase tracking-wider text-soft">Pinyin</div>
                       <div className="mt-1">{w.pinyin || "—"}</div>

@@ -16,8 +16,8 @@
   --color-jade-soft: #e1efe8;
   --color-amber: #9c6a11;
   --color-amber-soft: #f6edd6;
-  --font-cn: "Noto Serif SC", "Songti SC", "STSong", "PingFang SC", serif;
-  --font-cn-sans: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-cn: "MiSans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-cn-sans: "MiSans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 .dark {

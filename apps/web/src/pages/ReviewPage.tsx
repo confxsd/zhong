@@ -131,7 +131,7 @@ export default function ReviewPage() {
               {flipped ? "answer" : "tap to reveal"}
             </span>
 
-            <div className={`font-cn text-6xl font-black leading-none tracking-wide md:text-7xl ${flipped ? "text-accent" : ""}`}>{card.hanzi}</div>
+            <div className={`font-cn text-6xl font-bold leading-none tracking-wide md:text-7xl ${flipped ? "text-accent" : ""}`}>{card.hanzi}</div>
 
             <div className="mt-6 h-24 w-full">
               {flipped ? (

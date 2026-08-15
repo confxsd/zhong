@@ -165,4 +165,9 @@ lesson result view (translation, pinyin, segments, breakdown, grammar,
 vocab), settings with backend URL config + health check.
 
 **Pending:** Test build on-device, verify Writing Tools popover integration
-on iOS 18.4, deploy Cloudflare backend and configure URL.
+on iOS 18.4.
+
+**Cloud backend:** Deployed at https://zhong.rome.markets (Cloudflare Worker
++ D1, same API as the local server). Project lives in `~/Code/market/zhong`.
+Set the backend URL in Settings to `https://zhong.rome.markets` and run the
+health check.

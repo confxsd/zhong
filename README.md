@@ -25,7 +25,17 @@ browser redirect.
 
 ## Quick Start
 
-Requires Node 20+ and macOS Xcode Command Line Tools for native integrations.
+The app runs on the cloud backend at https://zhong.rome.markets (Cloudflare
+Worker + D1) — no local server is needed. Just open Zhōng:
+
+```bash
+zhong
+```
+
+Or visit https://zhong.rome.markets directly. Vocabulary, sessions, and
+review state live in the cloud database and are shared across devices.
+
+Local development (optional):
 
 ```bash
 npm install
@@ -34,14 +44,14 @@ cp .env.example .env
 npm run dev
 ```
 
-Open `http://localhost:5173` in development. Production mode:
+Open `http://localhost:5173` in development. Production build:
 
 ```bash
 npm run build
 npm start
 ```
 
-Data is stored locally at `apps/server/data/zhong.db`.
+Local development data is stored at `apps/server/data/zhong.db`.
 
 ## Global Command
 
@@ -52,12 +62,12 @@ npm link
 ```
 
 ```text
-zhong                    Start the background app and open the browser
-zhong dev                Development mode with hot reload
-zhong status             Server, menubar, picker, and service status
-zhong stop               Stop the background server
-zhong restart            Restart the background server
-zhong build              Rebuild server and web
+zhong                    Open Zhōng in the browser (cloud backend)
+zhong dev                Local development mode with hot reload
+zhong status             Cloud and macOS integration status
+zhong stop               Stop any leftover local development server
+zhong restart            Reopen Zhōng in the browser
+zhong build              Rebuild server and web (development)
 zhong logs               Show recent runtime logs
 ```
 
@@ -82,10 +92,11 @@ Remove it with `zhong uninstall-picker`.
 zhong install-startup
 ```
 
-This installs the server and native `中` menubar app as launchd agents. The
-menubar menu opens Study, Review, and Library and can start or stop the server.
+This installs the native `中` menubar app as a launchd agent. The menubar
+menu opens Study, Review, and Library on the cloud backend and shows whether
+it is reachable.
 
-Use `zhong uninstall-startup` to remove both login items.
+Use `zhong uninstall-startup` to remove the login item.
 
 ### macOS Services
 
@@ -145,8 +156,12 @@ npm run typecheck
 npm run build
 ```
 
-Runtime files and local secrets are ignored by git. The SQLite database remains
-local to the machine.
+Runtime files and local secrets are ignored by git. The SQLite database is
+only used in local development; the Mac apps connect to the cloud backend.
+
+The cloud project lives in `~/Code/market/zhong` (Cloudflare Worker + D1,
+deployed at https://zhong.rome.markets, same API as the local server). Its web
+UI build is synced from this repo via `scripts/sync-web.sh`.
 
 ## iOS App
 

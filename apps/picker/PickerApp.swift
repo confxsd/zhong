@@ -27,7 +27,7 @@ private struct InlineLesson: Decodable {
 /// the selection; clicking it opens the Zhōng lesson for that text.
 /// Runs as an LSUIElement agent (no dock icon), launched by launchd at login.
 final class PickerController: NSObject {
-    private let serverURL = URL(string: "http://localhost:4450")!
+    private let serverURL = URL(string: "https://zhong.rome.markets")!
     private let stickMax = 2000
 
     private var panel: NSPanel!

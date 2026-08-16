@@ -1,9 +1,8 @@
 import AppKit
 import Foundation
 
-/// Zhōng menubar app — a small tray icon that knows whether the Zhōng server
-/// is alive, can open the app's pages, and can start/stop the server via the
-/// `zhong` CLI (path read from ~/.zhong/config.json, written by the CLI).
+/// Zhōng menubar app — a small tray icon that shows whether the Zhōng cloud
+/// backend (zhong.rome.markets) is reachable and opens the app's pages.
 final class ZhongMenuBarApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     fileprivate static let shared = ZhongMenuBarApp()
 
@@ -14,23 +13,17 @@ final class ZhongMenuBarApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var serverUp = false
 
     private let serverURL: URL
-    private let cliPath: String
-    private let nodePath: String
 
     override init() {
-        let defaults = ("", URL(string: "http://localhost:4450")!, "")
+        let defaultURL = URL(string: "https://zhong.rome.markets")!
         let cfgURL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".zhong/config.json")
         if let data = try? Data(contentsOf: cfgURL),
-           let cfg = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            cliPath = cfg["cliPath"] as? String ?? defaults.0
-            nodePath = cfg["nodePath"] as? String ?? defaults.2
-            let url = cfg["serverUrl"] as? String ?? defaults.1.absoluteString
-            serverURL = URL(string: url) ?? defaults.1
+           let cfg = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let url = cfg["serverUrl"] as? String {
+            serverURL = URL(string: url) ?? defaultURL
         } else {
-            cliPath = defaults.0
-            nodePath = defaults.2
-            serverURL = defaults.1
+            serverURL = defaultURL
         }
         super.init()
     }
@@ -71,9 +64,6 @@ final class ZhongMenuBarApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Review · 复习", #selector(openReview)))
         menu.addItem(item("Library · 词库", #selector(openLibrary)))
         menu.addItem(.separator())
-        menu.addItem(item("Start server", #selector(startServer)))
-        menu.addItem(item("Stop server", #selector(stopServer)))
-        menu.addItem(.separator())
         statusRowItem = statusRow()
         menu.addItem(statusRowItem)
         menu.addItem(.separator())
@@ -83,12 +73,7 @@ final class ZhongMenuBarApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshMenu() {
-        let startRow = menu.items.first { $0.action == #selector(startServer) }
-        let stopRow = menu.items.first { $0.action == #selector(stopServer) }
-        let canControl = !cliPath.isEmpty && !nodePath.isEmpty
-        startRow?.isEnabled = canControl && !serverUp
-        stopRow?.isEnabled = canControl && serverUp
-        statusRowItem.title = serverUp ? "● Server running on :4450" : "○ Server stopped"
+        statusRowItem.title = serverUp ? "● Cloud connected" : "○ Cloud unreachable"
     }
 
     private func statusRow() -> NSMenuItem {
@@ -112,49 +97,11 @@ final class ZhongMenuBarApp: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // MARK: - macOS Services ("Teach with Zhōng" in right-click → Services)
 
-    /// Entry point for the service declared in Info.plist (NSServices → NSMessage "zhongTeach").
-    /// Called by the system with the selected text on the pasteboard.
-    @objc func zhongTeach(_ pboard: NSPasteboard, userData: String?, error: AutoreleasingUnsafeMutablePointer<NSString?>?) {
-        guard let text = pboard.string(forType: .string)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-            !text.isEmpty
-        else { return }
-        openText(text)
-    }
-
-    @objc private func openText(_ text: String) {
-        guard var comps = URLComponents(url: serverURL, resolvingAgainstBaseURL: false),
-              let url = {
-                  comps.queryItems = [URLQueryItem(name: "text", value: String(text.prefix(5000)))]
-                  return comps.url
-              }()
-        else { return }
-        NSWorkspace.shared.open(url)
-    }
-
-    @objc private func startServer() { runCLI("start") }
-    @objc private func stopServer() {
-        runCLI("stop")
-        serverUp = false
-        refreshMenu()
-    }
+    // The system Services entry is provided by the dedicated ZhongService.app
+    // (apps/service). This menubar app only opens the cloud web app.
 
     @objc private func quitNow() {
         NSApp.terminate(nil)
-    }
-
-    private func runCLI(_ arg: String) {
-        guard !cliPath.isEmpty, !nodePath.isEmpty else { return }
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: nodePath) // require explicit node: GUI PATH has no node
-        p.arguments = [cliPath, arg]
-        p.standardOutput = FileHandle.nullDevice
-        p.standardError = FileHandle.nullDevice
-        do {
-            try p.run()
-        } catch {
-            NSLog("zhong: failed to run %@ %@: %@", nodePath, arg, error.localizedDescription)
-        }
     }
 
     // MARK: - Health check

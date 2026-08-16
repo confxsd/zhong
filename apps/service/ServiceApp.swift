@@ -6,7 +6,7 @@ import Foundation
 /// app (Safari, Notes, Pages, Word, Mail…). Installed into ~/Library/Services;
 /// the system launches it on demand when the service is invoked.
 final class ServiceDelegate: NSObject, NSApplicationDelegate {
-    private let serverURL = URL(string: "http://localhost:4450")!
+    private let serverURL = URL(string: "https://zhong.rome.markets")!
 
     func applicationDidFinishLaunching(_ notification: Notification) {}
 

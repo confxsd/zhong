@@ -4,6 +4,7 @@
 const { spawn, execSync } = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
+const https = require("node:https");
 const os = require("node:os");
 const path = require("node:path");
 
@@ -11,6 +12,8 @@ const SCRIPT = fs.realpathSync(__filename);
 const ROOT = path.resolve(path.dirname(SCRIPT), "..");
 const PORT = 4450;
 const WEB_PORT = 5173;
+// Zhōng runs on the cloud backend — the Mac is a thin client.
+const REMOTE_URL = "https://zhong.rome.markets";
 const STATE_DIR = path.join(os.homedir(), ".zhong");
 const PID_FILE = path.join(STATE_DIR, "server.pid");
 const LOG_FILE = path.join(STATE_DIR, "server.log");
@@ -25,8 +28,6 @@ const PICKER_APP = path.join(STATE_DIR, "ZhongPicker.app");
 const PICKER_BIN = path.join(PICKER_APP, "Contents", "MacOS", "ZhongPicker");
 const PICKER_PLIST = path.join(os.homedir(), "Library", "LaunchAgents", "com.zhong.picker.plist");
 const CONFIG_FILE = path.join(STATE_DIR, "config.json");
-const SERVER_ENTRY = path.join(ROOT, "apps", "server", "dist", "index.js");
-const URL = `http://localhost:${PORT}`;
 const LSREGISTER = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
 const PBS = "/System/Library/CoreServices/pbs";
 const SIGN_IDENTITY = "Zhong Codesign";
@@ -83,37 +84,6 @@ async function waitPort(port, timeoutMs = 20000) {
   return false;
 }
 
-function newestMtime(dir) {
-  try {
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    let max = 0;
-    for (const e of entries) {
-      const p = path.join(dir, e.name);
-      const st = fs.statSync(p);
-      if (e.isDirectory()) max = Math.max(max, newestMtime(p));
-      else max = Math.max(max, st.mtimeMs);
-    }
-    return max;
-  } catch {
-    return 0;
-  }
-}
-
-function isStale() {
-  const outs = [
-    path.join(ROOT, "apps", "server", "dist", "index.js"),
-    path.join(ROOT, "apps", "web", "dist", "index.html"),
-  ].map((p) => {
-    try {
-      return fs.statSync(p).mtimeMs;
-    } catch {
-      return 0;
-    }
-  });
-  const srcs = [path.join(ROOT, "apps", "server", "src"), path.join(ROOT, "apps", "web", "src")].map(newestMtime);
-  return srcs.some((s, i) => outs[i] === 0 || s > outs[i]);
-}
-
 function runBuild() {
   execSync("npm run build", { cwd: ROOT, stdio: "inherit" });
 }
@@ -128,18 +98,19 @@ function openBrowser(url) {
   spawn(cmd, { shell: true, detached: true, stdio: "ignore" }).unref();
 }
 
-function startServer() {
-  ensureStateDir();
-  const log = fs.openSync(LOG_FILE, "a");
-  const errl = fs.openSync(ERR_FILE, "a");
-  const child = spawn(process.execPath, [SERVER_ENTRY], {
-    cwd: ROOT,
-    detached: true,
-    stdio: ["ignore", log, errl],
+function remoteHealth(ms = 5000) {
+  return new Promise((resolve) => {
+    const req = https.get(`${REMOTE_URL}/api/health`, { timeout: ms }, (res) => {
+      let body = "";
+      res.on("data", (c) => (body += c));
+      res.on("end", () => resolve(res.statusCode === 200 && body.includes('"ok":true')));
+    });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
+    req.on("error", () => resolve(false));
   });
-  child.unref();
-  if (child.pid) fs.writeFileSync(PID_FILE, String(child.pid));
-  return child.pid;
 }
 
 function killPort(port) {
@@ -168,8 +139,7 @@ function menubarInstalled() {
 
 function writeConfig() {
   ensureStateDir();
-  const nodePath = fs.realpathSync(process.execPath);
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ cliPath: SCRIPT, nodePath, serverUrl: URL }, null, 2));
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ serverUrl: REMOTE_URL }, null, 2));
 }
 
 function buildMenubar() {
@@ -423,74 +393,20 @@ async function start({ quiet = false } = {}) {
   ensureStateDir();
   writeConfig();
 
-  if (await portOpen(PORT)) {
-    if (!quiet) console.log(ok("Already running."));
+  if (await remoteHealth()) {
+    if (!quiet) console.log(ok(`Cloud backend reachable — ${REMOTE_URL}`));
     return "running";
   }
 
-  if (startupInstalled()) {
-    // launchd owns this server — nudge it back to life instead of spawning a rival.
-    let up = false;
-    try {
-      execSync(`launchctl kickstart -k gui/${uid()}/com.zhong.server`, { stdio: "ignore" });
-      up = await waitPort(PORT, 10000);
-    } catch {}
-    if (!up) {
-      // Service may be unloaded (e.g. after `zhong stop`) — load it back.
-      try {
-        execSync(`launchctl bootstrap gui/${uid()} ${plistPath()}`, { stdio: "ignore" });
-        up = await waitPort(PORT, 25000);
-      } catch {}
-    }
-    if (up) {
-      if (!quiet) console.log(ok(`Running at ${URL} (launchd)`));
-      return "running";
-    }
-    console.error(err("launchd failed to start the server — run `zhong uninstall-startup` and retry."));
-    logs();
-    process.exit(1);
-  }
-
-  if (!fs.existsSync(SERVER_ENTRY)) {
-    console.log(dim("First run — building app…"));
-    runBuild();
-  } else if (isStale()) {
-    console.log(dim("Sources changed — rebuilding…"));
-    runBuild();
-  }
-
-  const stale = readPid();
-  if (stale && alive(stale)) {
-    try {
-      process.kill(stale, "SIGTERM");
-    } catch {}
-    await new Promise((r) => setTimeout(r, 800));
-  }
-
-  const pid = startServer();
-  console.log(dim(`Starting server (pid ${pid})…`));
-  if (!(await waitPort(PORT))) {
-    console.error(err("Server failed to start — see:"), LOG_FILE, ERR_FILE);
-    logs();
-    process.exit(1);
-  }
-  if (!quiet) console.log(ok(`Running at ${URL}`));
-  return "started";
+  console.error(err(`Cannot reach ${REMOTE_URL} — check your connection and try again.`));
+  process.exit(1);
 }
 
 async function showStatus() {
-  const pid = readPid();
-  const up = await portOpen(PORT);
-  const startup = startupInstalled();
+  const up = await remoteHealth();
 
   console.log(bold("zhong — status"));
-  console.log(`  app:       ${up ? ok("running") : err("stopped")}${up ? dim(`  (${URL})`) : ""}`);
-  if (up) {
-    if (pid && alive(pid)) console.log(`  process:   ${ok(`pid ${pid}`)}  (this CLI)`);
-    else if (startup) console.log(`  process:   ${dim("managed by launchd")}`);
-    else console.log(`  process:   ${dim("started outside this CLI")}`);
-  }
-  console.log(`  startup:   ${startup ? ok("installed (auto-starts at login)") : dim("not installed")}`);
+  console.log(`  cloud:     ${up ? ok("connected") : err("unreachable")}${up ? dim(`  (${REMOTE_URL})`) : ""}`);
   console.log(`  menubar:   ${menubarInstalled() ? ok("installed (中 icon at login)") : dim("not installed")}`);
   console.log(`  services:  ${servicesRegistered() ? ok("registered (Services menu)") : dim("not registered — run `zhong install-services`")}`);
   const trust = pickerTrusted();
@@ -503,56 +419,19 @@ async function showStatus() {
 
 async function installStartup() {
   ensureStateDir();
-  const node = process.execPath;
-  const plist = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.zhong.server</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>${node}</string>
-    <string>${SERVER_ENTRY}</string>
-  </array>
-  <key>WorkingDirectory</key>
-  <string>${ROOT}</string>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-  <key>ProcessType</key>
-  <string>Background</string>
-  <key>StandardOutPath</key>
-  <string>${LOG_FILE}</string>
-  <key>StandardErrorPath</key>
-  <string>${ERR_FILE}</string>
-</dict>
-</plist>
-`;
+  writeConfig();
 
-  fs.writeFileSync(plistPath(), plist, { mode: 0o644 });
-  execSync(`plutil -lint ${plistPath()}`, { stdio: "inherit" });
+  // Remove the legacy local-server agent: the app now runs on the cloud
+  // backend (zhong.rome.markets) and the Mac needs no local server.
+  try {
+    execSync(`launchctl bootout gui/${uid()} ${PLIST_DEFAULT}`, { stdio: "ignore" });
+  } catch {}
+  fs.rmSync(PLIST_DEFAULT, { force: true });
+  fs.rmSync(PID_FILE, { force: true });
+  killPort(PORT);
 
-  if (plistPath() === PLIST_DEFAULT) {
-    writeConfig();
-    // Hand control to launchd cleanly: stop CLI/old instances first, then load the job.
-    await stopServer({ quiet: true });
-    try {
-      execSync(`launchctl bootstrap gui/${uid()} ${plistPath()}`, { stdio: "inherit" });
-    } catch (e) {
-      console.error(err("launchctl failed:"), e.message);
-      process.exit(1);
-    }
-    console.log(ok("Startup item installed — the app auto-starts at login and stays alive."));
-    console.log("  Run " + bold("zhong") + " next time to just open the browser.");
-    if (!(await portOpen(PORT))) {
-      if (await waitPort(PORT, 30000)) console.log(ok(`launchd started it — ${URL}`));
-      else console.error(err("launchd launched but the server is not answering yet — check `zhong logs`."));
-    }
-
-    if (buildMenubar()) {
-      const plist = `<?xml version="1.0" encoding="UTF-8"?>
+  if (buildMenubar()) {
+    const plist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -573,23 +452,20 @@ async function installStartup() {
 </dict>
 </plist>
 `;
-      fs.writeFileSync(MENUBAR_PLIST, plist, { mode: 0o644 });
-      execSync(`plutil -lint ${MENUBAR_PLIST}`, { stdio: "inherit" });
-      try {
-        execSync(`launchctl bootout gui/${uid()} ${MENUBAR_PLIST}`, { stdio: "ignore" });
-      } catch {}
-      try {
-        execSync(`launchctl bootstrap gui/${uid()} ${MENUBAR_PLIST}`, { stdio: "inherit" });
-      } catch (e) {
-        console.error(err("launchctl failed for menubar app:"), e.message);
-        process.exit(1);
-      }
-      console.log(ok(`Menubar icon (中) installed — look for it in the menu bar at the top right.`));
+    fs.writeFileSync(MENUBAR_PLIST, plist, { mode: 0o644 });
+    execSync(`plutil -lint ${MENUBAR_PLIST}`, { stdio: "inherit" });
+    try {
+      execSync(`launchctl bootout gui/${uid()} ${MENUBAR_PLIST}`, { stdio: "ignore" });
+    } catch {}
+    try {
+      execSync(`launchctl bootstrap gui/${uid()} ${MENUBAR_PLIST}`, { stdio: "inherit" });
+    } catch (e) {
+      console.error(err("launchctl failed for menubar app:"), e.message);
+      process.exit(1);
     }
-    registerServices().catch(() => {});
-  } else {
-    console.log(dim(`Plist written to ${plistPath()} (custom path, launchctl skipped).`));
+    console.log(ok(`Menubar icon (中) installed — look for it in the menu bar at the top right.`));
   }
+  registerServices().catch(() => {});
 }
 
 async function uninstallStartup() {
@@ -621,9 +497,7 @@ function logs(n = 50) {
 
 function dev() {
   ensureStateDir();
-  if (startupInstalled()) {
-    console.log(dim("Note: the startup item is running on :4450 — dev mode uses :5173."));
-  }
+  console.log(dim("Note: dev mode runs the local dev servers — the installed app always uses the cloud backend (zhong.rome.markets)."));
   const child = spawn("npm", ["run", "dev"], { cwd: ROOT, stdio: "inherit" });
   waitPort(WEB_PORT, 30000).then((up) => {
     if (up) openBrowser(`http://localhost:${WEB_PORT}`);
@@ -638,19 +512,19 @@ function help() {
 ${bold("zhong")} — your Chinese study companion
 
 Usage:
-  ${bold("zhong")}                  start the app (builds if needed) and open the browser
-  ${bold("zhong dev")}             run in development mode (hot reload)
-  ${bold("zhong stop")}            stop the background server
-  ${bold("zhong restart")}         restart the background server and open the browser
-  ${bold("zhong status")}          show server + startup status
-  ${bold("zhong build")}           rebuild server and web
-  ${bold("zhong menubar")}         launch the menubar app (中 icon, controls server)
+  ${bold("zhong")}                  open Zhōng in the browser (cloud backend: ${REMOTE_URL})
+  ${bold("zhong dev")}             run the local development servers (hot reload)
+  ${bold("zhong stop")}            stop any leftover local development server
+  ${bold("zhong restart")}         reopen Zhōng in the browser
+  ${bold("zhong status")}          show cloud + macOS integration status
+  ${bold("zhong build")}           rebuild server and web (development)
+  ${bold("zhong menubar")}         launch the menubar app (中 icon, cloud status)
   ${bold("zhong install-services")}  register the right-click service with macOS (all apps)
   ${bold("zhong uninstall-services")}  remove the right-click service
   ${bold("zhong install-picker")}    install the selection pill (PopClip-style, any app + Chrome)
   ${bold("zhong uninstall-picker")}  remove the selection pill
   ${bold("zhong install-cert")}     create the stable code-signing identity (keeps Accessibility grants valid)
-  ${bold("zhong install-startup")} auto-start the app at login (launchd: server + menubar)
+  ${bold("zhong install-startup")} auto-start the menubar app at login
   ${bold("zhong uninstall-startup")}  remove the login startup items
   ${bold("zhong logs")}            tail the last 50 log lines
 `);
@@ -663,7 +537,7 @@ async function main() {
     case "start":
     case "open":
       await start();
-      openBrowser(URL);
+      openBrowser(REMOTE_URL);
       break;
     case "dev":
       dev();
@@ -674,7 +548,7 @@ async function main() {
     case "restart":
       await stopServer({ quiet: true });
       await start();
-      openBrowser(URL);
+      openBrowser(REMOTE_URL);
       break;
     case "status":
       await showStatus();

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS vocab (
 CREATE TABLE IF NOT EXISTS sessions (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   input_text    TEXT NOT NULL,
+  input_norm    TEXT,
   pinyin        TEXT NOT NULL DEFAULT '',
   translation   TEXT NOT NULL DEFAULT '',
   segments      TEXT NOT NULL DEFAULT '[]',
@@ -57,6 +58,15 @@ CREATE INDEX IF NOT EXISTS idx_vocab_next_review ON vocab(next_review_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_review_log_date ON review_log(reviewed_at);
 `);
+
+// Migrate databases created before session deduplication.
+// NULLs are allowed multiple times in a SQLite unique index, so creating the
+// index on old data is safe; rows get their key backfilled on next write.
+const sessionCols = db.pragma("table_info(sessions)") as { name: string }[];
+if (!sessionCols.some((c) => c.name === "input_norm")) {
+  db.exec("ALTER TABLE sessions ADD COLUMN input_norm TEXT;");
+}
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_input_norm ON sessions(input_norm);");
 
 export type VocabRow = {
   id: number;

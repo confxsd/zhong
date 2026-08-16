@@ -1,6 +1,7 @@
 import { getProvider } from "../ai/provider.js";
 import { validateTeachOutput, z, type VocabItemInput } from "../ai/schema.js";
 import { db, VocabRow } from "../db/index.js";
+import { normalizeHanzi, normalizeInput } from "../lib/normalize.js";
 
 export type KnownWord = { hanzi: string; meaning: string; box: number };
 
@@ -92,14 +93,15 @@ export interface TeachResult {
 }
 
 function upsertVocab(item: VocabItemInput, known: Set<string>): VocabResult {
-  const existing = db.prepare("SELECT id, meaning FROM vocab WHERE hanzi = ?").get(item.hanzi) as
+  const hanzi = normalizeHanzi(item.hanzi);
+  const existing = db.prepare("SELECT id, meaning FROM vocab WHERE hanzi = ?").get(hanzi) as
     | Pick<VocabRow, "id" | "meaning">
     | undefined;
 
   if (existing) {
-    const alreadyKnown = known.has(item.hanzi);
+    const alreadyKnown = known.has(hanzi);
     return {
-      hanzi: item.hanzi,
+      hanzi,
       pinyin: item.pinyin,
       meaning: item.meaning,
       example: item.example,
@@ -115,10 +117,10 @@ function upsertVocab(item: VocabItemInput, known: Set<string>): VocabResult {
       `INSERT INTO vocab (hanzi, pinyin, meaning, example, example_trans)
        VALUES (?, ?, ?, ?, ?)`
     )
-    .run(item.hanzi, item.pinyin, item.meaning, item.example, item.example_translation);
+    .run(hanzi, item.pinyin, item.meaning, item.example, item.example_translation);
 
   return {
-    hanzi: item.hanzi,
+    hanzi,
     pinyin: item.pinyin,
     meaning: item.meaning,
     example: item.example,
@@ -138,11 +140,11 @@ export async function teach(text: string, signal?: AbortSignal): Promise<TeachRe
   const raw = await provider.chatJson<unknown>(messages, { signal: signal ?? AbortSignal.timeout(90_000) });
   const output = validateTeachOutput(raw);
 
-  const known = new Set(knownWordsIn(trimmed).map((k) => k.hanzi));
+  const known = new Set(knownWordsIn(trimmed).map((k) => normalizeHanzi(k.hanzi)));
   const knownSetIds = new Set<number>();
   const vocabResults: VocabResult[] = [];
   for (const item of output.vocab) {
-    if (known.has(item.hanzi)) continue;
+    if (known.has(normalizeHanzi(item.hanzi))) continue;
     const r = upsertVocab(item, known);
     if (r.id) knownSetIds.add(r.id);
     vocabResults.push(r);
@@ -150,22 +152,51 @@ export async function teach(text: string, signal?: AbortSignal): Promise<TeachRe
 
   const recognized = knownWordsIn(trimmed).map((k) => ({ hanzi: k.hanzi, meaning: k.meaning }));
 
-  const sessionInsert = db
-    .prepare(
-      `INSERT INTO sessions (input_text, pinyin, translation, segments, breakdown, grammar, notes, recognized)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      trimmed,
+  // Dedup sessions by a normalized key so re-teaching the same text
+  // (double clicks, case or punctuation differences) refreshes the
+  // existing history row instead of creating a duplicate.
+  const inputNorm = normalizeInput(trimmed);
+  const existingSession = db.prepare("SELECT id FROM sessions WHERE input_norm = ?").get(inputNorm) as
+    | { id: number }
+    | undefined;
+
+  let sessionId: number;
+  if (existingSession) {
+    sessionId = existingSession.id;
+    db.prepare(
+      `UPDATE sessions
+       SET pinyin = ?, translation = ?, segments = ?, breakdown = ?, grammar = ?, notes = ?, recognized = ?
+       WHERE id = ?`
+    ).run(
       output.pinyin,
       output.translation,
       JSON.stringify(output.segments),
       JSON.stringify(output.breakdown),
       JSON.stringify(output.grammar),
       JSON.stringify(output.notes),
-      JSON.stringify(recognized)
+      JSON.stringify(recognized),
+      sessionId
     );
-  const sessionId = Number(sessionInsert.lastInsertRowid);
+    db.prepare("DELETE FROM session_vocab WHERE session_id = ?").run(sessionId);
+  } else {
+    const sessionInsert = db
+      .prepare(
+        `INSERT INTO sessions (input_text, input_norm, pinyin, translation, segments, breakdown, grammar, notes, recognized)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        trimmed,
+        inputNorm,
+        output.pinyin,
+        output.translation,
+        JSON.stringify(output.segments),
+        JSON.stringify(output.breakdown),
+        JSON.stringify(output.grammar),
+        JSON.stringify(output.notes),
+        JSON.stringify(recognized)
+      );
+    sessionId = Number(sessionInsert.lastInsertRowid);
+  }
 
   const link = db.prepare("INSERT OR IGNORE INTO session_vocab (session_id, vocab_id) VALUES (?, ?)");
   const tx = db.transaction(() => {

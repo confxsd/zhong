@@ -99,7 +99,7 @@ export default function ResultView({ result }: { result: TeachResult | SessionDe
         action={
           <div className="flex items-center gap-1">
             <SpeakButton text={displayText} title="Listen" />
-            <SpeakButton text={displayText} rate={0.65} title="Listen slowly" className="h-7 w-7" size={13} />
+            <SpeakButton text={displayText} rate={0.65} label="slow" title="Listen slowly" />
             <CopyButton text={`${displayText}\n${result.pinyin}\n${meaningText}`} label="copy all" />
           </div>
         }

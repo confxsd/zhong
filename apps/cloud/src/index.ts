@@ -4,6 +4,7 @@ import { getProvider } from "./ai/provider.js";
 import { dailyPlan } from "./services/plan.js";
 import reviewRouter from "./routes/review.js";
 import sessionsRouter from "./routes/sessions.js";
+import songsRouter from "./routes/songs.js";
 import tracksRouter from "./routes/tracks.js";
 import translateRouter from "./routes/translate.js";
 import ttsRouter from "./routes/tts.js";
@@ -33,6 +34,7 @@ app.route("/api/tts", ttsRouter);
 app.route("/api/vocab", vocabRouter);
 app.route("/api/review", reviewRouter);
 app.route("/api/sessions", sessionsRouter);
+app.route("/api/songs", songsRouter);
 app.route("/api/tracks", tracksRouter);
 
 app.onError((err, c) => {

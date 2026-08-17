@@ -295,7 +295,7 @@ export default function TrackPage() {
           </div>
           <p className="mb-3 text-sm text-soft">{track.subtitle}</p>
           <div className="mb-1.5 h-3 overflow-hidden rounded-full bg-surface">
-            <div className="h-full rounded-full bg-gradient-to-r from-accent via-accent-strong to-amber transition-all duration-700" style={{ width: `${pct}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-accent to-accent-strong transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
           <div className="mb-4 flex justify-between text-xs font-medium text-soft">
             <span>{pct}% of the track touched</span>

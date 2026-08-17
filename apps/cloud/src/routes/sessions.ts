@@ -45,10 +45,52 @@ app.get("/:id", async (c) => {
 });
 
 app.delete("/:id", async (c) => {
-  const info = await c.env.DB.prepare("DELETE FROM sessions WHERE id = ?")
-    .bind(Number(c.req.param("id")))
-    .run();
+  const id = z.coerce.number().int().positive().parse(c.req.param("id"));
+  const session = await c.env.DB.prepare("SELECT kind FROM sessions WHERE id = ?")
+    .bind(id)
+    .first<{ kind: string } | null>();
+  if (!session) return c.json({ error: "Session not found" }, 404);
+
+  const linked = await c.env.DB.prepare(
+    "SELECT v.id, v.hanzi FROM session_vocab sv JOIN vocab v ON v.id = sv.vocab_id WHERE sv.session_id = ?"
+  )
+    .bind(id)
+    .all<{ id: number; hanzi: string }>();
+
+  const info = await c.env.DB.prepare("DELETE FROM sessions WHERE id = ?").bind(id).run();
   if (info.meta.changes === 0) return c.json({ error: "Session not found" }, 404);
+
+  // Words this session was the only source of leave the library and the
+  // review queue entirely (review_log cascades with vocab).
+  const orphaned: { id: number; hanzi: string }[] = [];
+  for (const v of linked.results) {
+    const refs = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM session_vocab WHERE vocab_id = ?")
+      .bind(v.id)
+      .first<{ n: number }>();
+    if (refs && refs.n === 0) orphaned.push(v);
+  }
+
+  if (orphaned.length > 0) {
+    await c.env.DB.prepare(`DELETE FROM vocab WHERE id IN (${orphaned.map(() => "?").join(",")})`)
+      .bind(...orphaned.map((v) => v.id))
+      .run();
+  }
+
+  // Track-lesson words: un-stick their curriculum progress so they can be
+  // taught again from the track instead of lingering as "learning".
+  if (session.kind === "track-lesson" && orphaned.length > 0) {
+    const stmts = orphaned.map((v) =>
+      c.env.DB.prepare(
+        `UPDATE track_progress SET status = 'new', updated_at = datetime('now')
+         WHERE item_id IN (
+           SELECT ti.id FROM track_items ti
+           WHERE ti.type = 'word' AND json_extract(ti.payload, '$.hanzi') = ?
+         )`
+      ).bind(v.hanzi)
+    );
+    await c.env.DB.batch(stmts);
+  }
+
   return c.json({ ok: true });
 });
 

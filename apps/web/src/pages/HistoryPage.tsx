@@ -18,6 +18,11 @@ export default function HistoryPage() {
     onSuccess: (_, id) => {
       setHidden((s) => new Set(s).add(id));
       void queryClient.invalidateQueries({ queryKey: ["stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["vocab"] });
+      void queryClient.invalidateQueries({ queryKey: ["review"] });
+      void queryClient.invalidateQueries({ queryKey: ["track"] });
+      void queryClient.invalidateQueries({ queryKey: ["plan"] });
+      void queryClient.invalidateQueries({ queryKey: ["health"] });
       toast("Session deleted");
     },
     onError: (err: Error) => toast(err.message, "error"),
@@ -51,8 +56,10 @@ export default function HistoryPage() {
         {rows.map((s) => (
           <div key={s.id} className="group flex items-center gap-4 rounded-2xl bg-paper px-4 py-3.5 transition hover:bg-surface">
             <Link to={`/history/${s.id}`} className="flex min-w-0 flex-1 items-center gap-4">
-              <span className="font-cn flex-1 truncate text-[15px] font-medium">{s.input_text}</span>
-              <span className="hidden max-w-60 truncate text-sm text-soft md:block">{s.translation}</span>
+              <span className="min-w-0 flex-1">
+                <span className="font-cn block truncate text-[15px] font-medium">{s.input_text}</span>
+                {s.translation && <span className="mt-0.5 block truncate text-xs text-soft">{s.translation}</span>}
+              </span>
             </Link>
             <span className="shrink-0 rounded-full bg-surface px-2 py-0.5 text-[11px] text-soft">{s.vocab_count} words</span>
             <span className="w-28 shrink-0 text-right text-xs text-soft">{formatDate(s.created_at)}</span>

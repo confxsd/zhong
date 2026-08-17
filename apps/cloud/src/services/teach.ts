@@ -97,7 +97,7 @@ export interface TeachResult {
   vocab: VocabResult[];
 }
 
-async function upsertVocab(db: D1Database, item: VocabItemInput, known: Set<string>): Promise<VocabResult> {
+export async function upsertVocab(db: D1Database, item: VocabItemInput, known: Set<string>): Promise<VocabResult> {
   const hanzi = normalizeHanzi(item.hanzi);
   const existing = await db
     .prepare("SELECT id, meaning FROM vocab WHERE hanzi = ?")

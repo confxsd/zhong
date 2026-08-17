@@ -3,41 +3,41 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-canvas: #f6f5f2;
-  --color-paper: #ffffff;
-  --color-surface: #f0efeb;
-  --color-surface-strong: #e6e4dd;
-  --color-ink: #1c1917;
-  --color-soft: #79736b;
-  --color-line: #e7e4dc;
-  --color-accent: #dd4b2e;
-  --color-accent-strong: #b93a22;
-  --color-accent-soft: #fbeae3;
-  --color-jade: #0e8a5e;
-  --color-jade-soft: #e3f2ea;
-  --color-jade-strong: #d6ebdd;
-  --color-amber: #a06f14;
-  --color-amber-soft: #f7eed7;
+  --color-canvas: #f6f2ec;
+  --color-paper: #fdfbf7;
+  --color-surface: #efeae1;
+  --color-surface-strong: #e4ddd0;
+  --color-ink: #201b17;
+  --color-soft: #7b7268;
+  --color-line: #e5ded2;
+  --color-accent: #c13a2b;
+  --color-accent-strong: #9e2b1f;
+  --color-accent-soft: #f9e9e5;
+  --color-jade: #177a58;
+  --color-jade-soft: #e1efe8;
+  --color-jade-strong: #cfe5da;
+  --color-amber: #a67c1e;
+  --color-amber-soft: #f6efd9;
   --font-cn: "MiSans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --font-cn-sans: "MiSans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 .dark {
-  --color-canvas: #0f0f11;
-  --color-paper: #17171b;
-  --color-surface: #232328;
-  --color-surface-strong: #2c2b32;
-  --color-ink: #ece9e4;
-  --color-soft: #9a938b;
-  --color-line: #2c2b31;
-  --color-accent: #ef6849;
-  --color-accent-strong: #f5846a;
-  --color-accent-soft: #3a241d;
-  --color-jade: #3fae86;
-  --color-jade-soft: #182e25;
-  --color-jade-strong: #21483a;
-  --color-amber: #d3a04d;
-  --color-amber-soft: #2f2818;
+  --color-canvas: #131110;
+  --color-paper: #1b1918;
+  --color-surface: #262220;
+  --color-surface-strong: #2f2a27;
+  --color-ink: #eee7df;
+  --color-soft: #a29a90;
+  --color-line: #2d2825;
+  --color-accent: #e0524d;
+  --color-accent-strong: #ed6f6a;
+  --color-accent-soft: #43201f;
+  --color-jade: #43b28a;
+  --color-jade-soft: #16291f;
+  --color-jade-strong: #1f4032;
+  --color-amber: #d8a94f;
+  --color-amber-soft: #2c2515;
 }
 
 html,
@@ -93,12 +93,38 @@ button {
   }
 }
 
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .anim-rise {
   animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .anim-pop {
   animation: pop 0.25s ease-out both;
+}
+
+.anim-sheet-up {
+  animation: sheet-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.anim-fade {
+  animation: fade-in 0.2s ease-out both;
 }
 
 .card-lift {

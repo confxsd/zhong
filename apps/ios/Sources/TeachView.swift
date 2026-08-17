@@ -95,7 +95,7 @@ struct TeachView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(isFocused ? Color.blue.opacity(0.4) : Color.clear, lineWidth: 2)
+                        .stroke(isFocused ? Theme.accent.opacity(0.4) : Color.clear, lineWidth: 2)
                 )
                 .overlay(alignment: .topLeading) {
                     if vm.inputText.isEmpty {
@@ -128,7 +128,7 @@ struct TeachView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(vm.canSubmit ? Color.blue : Color.blue.opacity(0.3))
+                .background(vm.canSubmit ? Theme.accent : Theme.accent.opacity(0.3))
                 .foregroundStyle(.white)
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .animation(.easeInOut(duration: 0.2), value: vm.isLoading)

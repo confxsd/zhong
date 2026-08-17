@@ -14,6 +14,7 @@
 		9CCD85C2EFADCED41371C5AC /* TeachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6219EA03D739A2AB344987 /* TeachView.swift */; };
 		CC87A5990296DE94A5BE0B3E /* ZhongIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE965ADFD459D6CCB31F1F8 /* ZhongIOSApp.swift */; };
 		DE910EA6C0243F45F9CA8213 /* TeachIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1129503A1A9B128BB456EBD7 /* TeachIntent.swift */; };
+		E670E4E375AB3DD14C6FC117 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8084F1544E5D760F36A9BEF /* Theme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		49C02BFB8E875211DF80B4C8 /* TeachResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeachResultView.swift; sourceTree = "<group>"; };
 		61036940DD5ED8B14115CB90 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		B372AEAFD8E95F2700A93707 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F8084F1544E5D760F36A9BEF /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		FD6219EA03D739A2AB344987 /* TeachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TeachView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -45,6 +47,7 @@
 				1129503A1A9B128BB456EBD7 /* TeachIntent.swift */,
 				49C02BFB8E875211DF80B4C8 /* TeachResultView.swift */,
 				FD6219EA03D739A2AB344987 /* TeachView.swift */,
+				F8084F1544E5D760F36A9BEF /* Theme.swift */,
 				1CE965ADFD459D6CCB31F1F8 /* ZhongIOSApp.swift */,
 			);
 			path = Sources;
@@ -119,6 +122,7 @@
 				DE910EA6C0243F45F9CA8213 /* TeachIntent.swift in Sources */,
 				23E458B2EA595FAA53B21474 /* TeachResultView.swift in Sources */,
 				9CCD85C2EFADCED41371C5AC /* TeachView.swift in Sources */,
+				E670E4E375AB3DD14C6FC117 /* Theme.swift in Sources */,
 				CC87A5990296DE94A5BE0B3E /* ZhongIOSApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

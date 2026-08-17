@@ -38,7 +38,7 @@ struct SettingsView: View {
                     if let result = testResult {
                         HStack {
                             Image(systemName: result.contains("✅") ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                .foregroundStyle(result.contains("✅") ? .green : .red)
+                                .foregroundStyle(result.contains("✅") ? Theme.jade : .red)
                             Text(result)
                                 .font(.caption)
                         }

@@ -60,7 +60,7 @@ struct TeachResultView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Translation", systemImage: "globe")
                 .font(.headline)
-                .foregroundStyle(.blue)
+                .foregroundStyle(Theme.accent)
             Text(result.translation)
                 .font(.body)
                 .foregroundStyle(.primary)
@@ -71,7 +71,7 @@ struct TeachResultView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Pinyin", systemImage: "waveform")
                 .font(.headline)
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.accent)
             Text(result.pinyin)
                 .font(.system(.body, design: .serif))
                 .foregroundStyle(.secondary)
@@ -82,14 +82,14 @@ struct TeachResultView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Phrase by Phrase", systemImage: "text.word.spacing")
                 .font(.headline)
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.jade)
             ForEach(result.segments) { seg in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(seg.text)
                         .font(.system(.body, design: .serif))
                     Text(seg.pinyin)
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.accent)
                     Text(seg.literal)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -107,7 +107,7 @@ struct TeachResultView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Character Breakdown", systemImage: "character.square")
                 .font(.headline)
-                .foregroundStyle(.purple)
+                .foregroundStyle(Theme.amber)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 12)], spacing: 12) {
                 ForEach(result.breakdown) { item in
                     VStack(spacing: 2) {
@@ -115,7 +115,7 @@ struct TeachResultView: View {
                             .font(.system(.title, design: .serif))
                         Text(item.pinyin)
                             .font(.caption2)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.accent)
                         Text(item.meaning)
                             .font(.caption)
                             .fontWeight(.medium)
@@ -137,7 +137,7 @@ struct TeachResultView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Grammar", systemImage: "book.pages")
                 .font(.headline)
-                .foregroundStyle(.teal)
+                .foregroundStyle(Theme.accent)
             ForEach(result.grammar) { gp in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(gp.point)
@@ -158,11 +158,12 @@ struct TeachResultView: View {
         VStack(alignment: .leading, spacing: 8) {
             Label("Notes", systemImage: "lightbulb")
                 .font(.headline)
-                .foregroundStyle(.yellow)
+                .foregroundStyle(Theme.amber)
             ForEach(Array(result.notes.enumerated()), id: \.offset) { _, note in
                 HStack(alignment: .top, spacing: 8) {
                     Image(systemName: "circle.fill")
                         .font(.system(size: 6))
+                        .foregroundStyle(Theme.amber)
                         .padding(.top, 6)
                     Text(note)
                         .font(.caption)
@@ -176,7 +177,7 @@ struct TeachResultView: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Vocabulary", systemImage: "book.closed")
                 .font(.headline)
-                .foregroundStyle(.indigo)
+                .foregroundStyle(Theme.jade)
             ForEach(result.vocab, id: \.hanzi) { word in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
@@ -184,11 +185,11 @@ struct TeachResultView: View {
                             .font(.system(.title3, design: .serif))
                         Text(word.pinyin)
                             .font(.caption)
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.accent)
                         Spacer()
                         if word.alreadyKnown {
                             Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(.green)
+                                .foregroundStyle(Theme.jade)
                                 .font(.caption)
                         }
                     }

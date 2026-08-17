@@ -5,6 +5,9 @@ import type {
   ReviewCard,
   SessionDetail,
   SessionSummary,
+  SongBulkStudyResult,
+  SongDetail,
+  SongSummary,
   TeachResult,
   Track,
   TrackLessonResult,
@@ -69,4 +72,11 @@ export const api = {
   tracks: () => request<Track[]>("/api/tracks"),
   track: (slug: string) => request<Track>(`/api/tracks/${slug}`),
   trackLesson: (slug: string) => request<TrackLessonResult>(`/api/tracks/${slug}/lesson`, { method: "POST" }),
+
+  songs: () => request<SongSummary[]>("/api/songs"),
+  song: (id: number) => request<SongDetail>(`/api/songs/${id}`),
+  addSong: (body: { title: string; artist: string; lyrics: string }) =>
+    request<SongDetail>("/api/songs", { method: "POST", body: JSON.stringify(body) }),
+  studySong: (id: number) => request<SongBulkStudyResult>(`/api/songs/${id}/study`, { method: "POST" }),
+  deleteSong: (id: number) => request<{ ok: boolean }>(`/api/songs/${id}`, { method: "DELETE" }),
 };

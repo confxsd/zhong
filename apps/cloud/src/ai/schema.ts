@@ -44,7 +44,41 @@ export const trackLessonSchema = z.object({
   notes: z.array(z.string()).default([]),
 });
 
+export const songLineGlossSchema = z.object({
+  text: z.string(),
+  pinyin: z.string(),
+  translation: z.string(),
+});
+
+export const songGlossSchema = z.object({
+  title: z.string().default(""),
+  artist: z.string().default(""),
+  lines: z.array(songLineGlossSchema).min(1),
+  notes: z.array(z.string()).default([]),
+});
+
+/** Models sometimes emit a bare string where an array is expected; fold
+ *  those into a single-element array so one sloppy line doesn't kill the
+ *  whole song lesson. */
+const stringOrArray = z
+  .union([z.array(z.string()), z.string()])
+  .transform((v) => (typeof v === "string" ? (v ? [v] : []) : v));
+
+export const songStudyLineSchema = z.object({
+  text: z.string(),
+  grammar: z.array(grammarPointSchema).default([]),
+  notes: stringOrArray.default([]),
+});
+
+export const songStudySchema = z.object({
+  lines: z.array(songStudyLineSchema).min(1),
+  breakdown: z.array(breakdownItemSchema).default([]),
+  vocab: z.array(vocabItemSchema).max(20).default([]),
+});
+
 export type TrackLessonOutput = z.infer<typeof trackLessonSchema>;
+export type SongGlossOutput = z.infer<typeof songGlossSchema>;
+export type SongStudyOutput = z.infer<typeof songStudySchema>;
 
 export type TeachOutput = z.infer<typeof teachOutputSchema>;
 export type VocabItemInput = z.infer<typeof vocabItemSchema>;
@@ -83,6 +117,18 @@ export function validateTeachOutput(parsed: unknown): TeachOutput {
 
 export function validateTrackLesson(parsed: unknown): TrackLessonOutput {
   const result = trackLessonSchema.safeParse(parsed);
+  if (!result.success) throw new Error(`Model output failed validation: ${issues(result.error)}`);
+  return result.data;
+}
+
+export function validateSongGloss(parsed: unknown): SongGlossOutput {
+  const result = songGlossSchema.safeParse(parsed);
+  if (!result.success) throw new Error(`Model output failed validation: ${issues(result.error)}`);
+  return result.data;
+}
+
+export function validateSongStudy(parsed: unknown): SongStudyOutput {
+  const result = songStudySchema.safeParse(parsed);
   if (!result.success) throw new Error(`Model output failed validation: ${issues(result.error)}`);
   return result.data;
 }

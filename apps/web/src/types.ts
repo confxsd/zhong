@@ -184,3 +184,43 @@ export interface Track {
   mastered: number;
   items: TrackItem[];
 }
+
+export interface SongSummary {
+  id: number;
+  title: string;
+  artist: string;
+  lineCount: number;
+  studied: number;
+  vocabCount: number;
+  created_at: string;
+}
+
+export interface SongLine {
+  text: string;
+  pinyin: string;
+  translation: string;
+  studied: boolean;
+  sessionId: number | null;
+  grammar: GrammarPoint[];
+  notes: string[];
+}
+
+export interface SongVocab {
+  id: number;
+  hanzi: string;
+  pinyin: string;
+  meaning: string;
+}
+
+export interface SongDetail extends SongSummary {
+  lyrics: string;
+  notes: string[];
+  breakdown: Breakdown[];
+  lines: SongLine[];
+  vocab: SongVocab[];
+}
+
+export interface SongBulkStudyResult {
+  song: SongDetail;
+  vocab: VocabResult[];
+}

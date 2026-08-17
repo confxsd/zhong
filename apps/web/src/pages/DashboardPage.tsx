@@ -81,7 +81,7 @@ function TrackCard({ plan }: { plan: Plan }) {
         {track.mastered} of {track.total} mastered · aligned with what language schools teach first
       </div>
       <div className="mb-1 h-2.5 overflow-hidden rounded-full bg-surface">
-        <div className="h-full rounded-full bg-gradient-to-r from-accent to-amber transition-all duration-700" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bg-gradient-to-r from-accent to-accent-strong transition-all duration-700" style={{ width: `${pct}%` }} />
       </div>
       <div className="mb-3 flex justify-between text-[11px] font-medium text-soft">
         <span>{pct}% started</span>

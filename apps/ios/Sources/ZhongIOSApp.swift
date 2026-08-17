@@ -16,6 +16,7 @@ struct ZhongIOSApp: App {
                         Label("Settings", systemImage: "gearshape")
                     }
             }
+            .tint(Theme.accent)
         }
     }
 }

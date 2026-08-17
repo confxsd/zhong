@@ -308,7 +308,7 @@ final class PickerController: NSObject {
         teachButton.focusRingType = .none
         teachButton.wantsLayer = true
         teachButton.layer?.cornerRadius = 14
-        teachButton.layer?.backgroundColor = NSColor(calibratedRed: 0.78, green: 0.26, blue: 0.17, alpha: 1).cgColor
+        teachButton.layer?.backgroundColor = NSColor(calibratedRed: 0.757, green: 0.227, blue: 0.169, alpha: 1).cgColor
         teachButton.contentTintColor = .white
         teachButton.setAccessibilityLabel("Teach with Zhōng")
         teachButton.target = self
@@ -492,7 +492,7 @@ final class PickerController: NSObject {
         addLessonView(makeLabel(lesson.pinyin, size: 12, color: .secondaryLabelColor))
         addLessonView(makeLabel(lesson.translation, size: 16, weight: .medium, lines: 5))
         if let grammar = lesson.grammar.first {
-            addLessonView(makeLabel("Grammar · \(grammar.point)", size: 12, weight: .bold, color: NSColor(calibratedRed: 0.78, green: 0.26, blue: 0.17, alpha: 1)))
+            addLessonView(makeLabel("Grammar · \(grammar.point)", size: 12, weight: .bold, color: NSColor(calibratedRed: 0.757, green: 0.227, blue: 0.169, alpha: 1)))
             addLessonView(makeLabel(grammar.explanation, size: 12, color: .secondaryLabelColor, lines: 6))
         }
         if !lesson.vocab.isEmpty {
@@ -516,7 +516,7 @@ final class PickerController: NSObject {
         let row = NSStackView()
         row.orientation = .horizontal
         row.spacing = 8
-        row.addArrangedSubview(makeLabel(title, size: 14, weight: .semibold, color: NSColor(calibratedRed: 0.78, green: 0.26, blue: 0.17, alpha: 1)))
+        row.addArrangedSubview(makeLabel(title, size: 14, weight: .semibold, color: NSColor(calibratedRed: 0.757, green: 0.227, blue: 0.169, alpha: 1)))
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         row.addArrangedSubview(spacer)

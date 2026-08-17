@@ -24,7 +24,7 @@ export default function ReviewPage() {
     queryKey: ["review", "due"],
     queryFn: async () => {
       const res = await api.reviewDue();
-      if (!queue) setQueue(res.cards);
+      if (!queue && res.cards.length > 0) setQueue(res.cards);
       return res;
     },
     staleTime: 15_000,
@@ -58,7 +58,7 @@ export default function ReviewPage() {
     },
   });
 
-  const card: ReviewCard | null = queue ? queue[position] : null;
+  const card: ReviewCard | null = queue ? (queue[position] ?? null) : null;
 
   useEffect(() => {
     if (queue && card === null) setQueue(null);

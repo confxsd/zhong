@@ -45,6 +45,11 @@ export interface TeachResult {
   vocab: VocabResult[];
 }
 
+export interface TrackLessonResult extends TeachResult {
+  kind: "track-lesson";
+  track: { slug: string; title: string };
+}
+
 export type VocabStatus = "new" | "learning" | "known";
 
 export interface VocabWord {
@@ -60,10 +65,16 @@ export interface VocabWord {
   correct_count: number;
   last_reviewed_at: string | null;
   next_review_at: string | null;
+  fsrs_state: string | null;
   created_at: string;
 }
 
 export type Grade = "again" | "hard" | "good" | "easy";
+
+export interface IntervalInfo {
+  due: string;
+  intervalMs: number;
+}
 
 export interface ReviewCard {
   id: number;
@@ -73,6 +84,9 @@ export interface ReviewCard {
   example: string;
   example_trans: string;
   box: number;
+  fsrs: { state: string; stability: number; retrievability: number };
+  previews: Record<Grade, IntervalInfo>;
+  context: { session_id: number; input_text: string; translation: string } | null;
 }
 
 export interface SessionSummary {
@@ -105,10 +119,68 @@ export interface Stats {
   sessions: number;
   reviewsToday: number;
   wordsToday: number;
+  totalReviews: number;
+  streak: number;
+  retention: number;
 }
 
 export interface Health {
   ok: boolean;
   provider: { name: string; model: string; configured: boolean };
   stats: Stats;
+}
+
+export interface Plan {
+  due: number;
+  reviewsToday: number;
+  streak: number;
+  retention: number;
+  newQuota: number;
+  wordsToday: number;
+  track: {
+    slug: string;
+    title: string;
+    total: number;
+    started: number;
+    mastered: number;
+    nextCount: number;
+    nextPreview: string[];
+  } | null;
+}
+
+export type TrackItemStatus = "new" | "learning" | "done";
+
+export interface TrackWordPayload {
+  hanzi: string;
+  pinyin: string;
+  meaning: string;
+}
+
+export interface TrackGrammarPayload {
+  slug: string;
+  title: string;
+  explanation: string;
+  example: string;
+  example_translation: string;
+}
+
+export interface TrackItem {
+  id: number;
+  sort: number;
+  type: "word" | "grammar";
+  payload: TrackWordPayload | TrackGrammarPayload;
+  status: TrackItemStatus;
+  review_count: number;
+}
+
+export interface Track {
+  id: number;
+  slug: string;
+  title: string;
+  subtitle: string;
+  kind: string;
+  total: number;
+  started: number;
+  mastered: number;
+  items: TrackItem[];
 }

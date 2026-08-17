@@ -41,7 +41,7 @@ export default function HistoryPage() {
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <Clock size={32} className="text-soft/50" />
           <div className="text-sm text-soft">Nothing here yet — your study sessions will show up automatically.</div>
-          <Link to="/" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
+          <Link to="/study" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
             Study your first text →
           </Link>
         </div>
@@ -59,7 +59,7 @@ export default function HistoryPage() {
             <button
               onClick={() => remove.mutate(s.id)}
               title="Delete session"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-soft opacity-0 transition group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-soft transition hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-950 md:opacity-0 md:group-hover:opacity-100"
             >
               <Trash2 size={15} />
             </button>

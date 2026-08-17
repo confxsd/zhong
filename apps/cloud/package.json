@@ -11,15 +11,18 @@
     "db:apply": "wrangler d1 migrations apply zhong",
     "db:apply:remote": "wrangler d1 migrations apply zhong --remote",
     "sync:web": "bash scripts/sync-web.sh",
-    "deploy:full": "bash scripts/sync-web.sh && wrangler deploy"
+    "deploy:full": "bash scripts/sync-web.sh && wrangler deploy",
+    "test": "vitest run"
   },
   "dependencies": {
     "hono": "^4.7.0",
+    "ts-fsrs": "^5.4.1",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260811.1",
     "typescript": "^5.7.0",
+    "vitest": "^3.2.7",
     "wrangler": "^4.0.0"
   }
 }

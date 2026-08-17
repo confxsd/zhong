@@ -6,32 +6,30 @@ because retention and pronunciation are the two things time must compound on.
 Feature IDs map to `features.md`; technical detail lives in
 `implementation.md`.
 
-## Phase 0 — The Spine (Aug–Sep 2026) · foundation
+## Phase 0 — The Spine (Aug–Sep 2026) · shipped ✓
 
 Make forgetting structurally impossible before volume arrives.
 
 - F-001 FSRS engine replaces Leitner (per-word adaptive scheduling)
 - F-002 Context-linked review cards (original sentence + source)
-- F-003 Review modes: reading, listening, pinyin typing, tone identification
+- F-003 Review modes: reading, listening, pinyin typing (tone identification lives in the Track-page drill)
 - F-004 Streaks + retention dashboard
 - F-006 Micro-session framing (chunked batches, live "done" feedback)
 
-**Exit criteria:** FSRS live on cloud with zero regressions on existing API
-shape; every card shows its source sentence with audio; dashboard shows
-retention % and streak. Local server parity kept.
-
-## Phase 1 — Foundations (Sep–Oct 2026) · curriculum begins
+## Phase 1 — Foundations (Sep–Oct 2026) · core shipped ✓
 
 The structured journey starts; pronunciation first (absolute beginner).
 
-- F-101 Pinyin & tone bootcamp (syllable tables, tone-pair drills)
-- F-102 HSK1 structured track with AI daily lessons (5–8 words/story)
+- F-101 Pinyin & tone bootcamp (tone drill + pinyin practice, in the Track page)
+- F-102 HSK1 structured track with AI daily lessons (5 words/story)
 - F-103 Daily plan with adaptive new-word quota
-- F-104 Track progress page + badges
-- F-105 Survival module 1 (greetings, self-intro, campus basics)
+- F-104 Track progress page + mastery states (badges pending)
+- F-105 Survival module 1 (greetings, self-intro, campus basics) — pending
 
-**Exit criteria:** He can read any pinyin with tones, consciously produce
-the 4 tones, and has ~150 reviewed words (HSK1 core) in the memory graph.
+**Exit criteria (Phase 0/1 core):** FSRS live with backward-compatible API;
+every card shows its source sentence with audio; dashboard shows streak and
+retention; he can read pinyin with tones, drill them, and progress through
+the 150-word HSK1 track. Remaining: survival module 1.
 
 ## Phase 2 — Depth Engine (Oct–Nov 2026) · strengths amplified
 

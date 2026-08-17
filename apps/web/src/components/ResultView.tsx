@@ -8,8 +8,8 @@ import SpeakText from "./SpeakText";
 function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section className="anim-rise rounded-3xl bg-paper p-5 md:p-6">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-soft">{title}</h3>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+        <h3 className="min-w-0 text-sm font-bold uppercase tracking-wider text-soft">{title}</h3>
         {action}
       </div>
       {children}
@@ -36,17 +36,17 @@ function CopyButton({ text, label = "copy" }: { text: string; label?: string }) 
 
 function VocabChip({ v }: { v: VocabResult }) {
   return (
-    <div className="anim-pop rounded-2xl bg-jade-soft p-4">
+    <div className="anim-pop rounded-2xl bg-jade-soft p-3">
       <div className="flex items-center gap-2">
         <SpeakButton text={v.hanzi} title={`Listen to ${v.hanzi}`} className="h-7 w-7 bg-paper/60 hover:bg-paper" size={13} />
-        <span className="font-cn text-xl font-bold leading-none">{v.hanzi}</span>
+        <span className="font-cn text-lg font-bold leading-none">{v.hanzi}</span>
         <span className="text-xs font-medium text-jade">{v.pinyin}</span>
       </div>
       <div className="mt-1.5 text-[13px] text-ink/80">{v.meaning}</div>
       {v.example && (
-        <div className="mt-2.5 flex items-start gap-2 rounded-xl bg-paper/70 p-2.5 text-xs leading-relaxed">
-          <SpeakButton text={v.example} title="Listen to example" className="h-6 w-6" size={12} />
-          <div>
+        <div className="mt-2 flex items-start gap-2 rounded-xl bg-paper/70 p-2 text-xs leading-relaxed">
+          <SpeakButton text={v.example} title="Listen to example" className="h-6 w-6 shrink-0" size={12} />
+          <div className="min-w-0 break-words">
             <span className="font-cn-sans text-[13px] font-medium">{v.example}</span>
             {v.example_translation && <div className="mt-0.5 text-soft">{v.example_translation}</div>}
           </div>
@@ -68,20 +68,21 @@ function BreakdownTile({ item }: { item: Breakdown }) {
   );
 }
 
-function SegmentRow({ seg }: { seg: Segments }) {
+function SegmentRow({ seg, index }: { seg: Segments; index: number }) {
   return (
-    <div className="rounded-2xl bg-surface px-4 py-3">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <SpeakButton text={seg.text} title={`Listen to ${seg.text}`} className="h-7 w-7" size={13} />
-        <div className="flex flex-wrap gap-x-0.5">
-          {Array.from(seg.text).map((ch, i) => (
-            <SpeakText key={i} text={ch} className="px-1 py-0.5 font-cn text-lg font-semibold" />
-          ))}
+    <li className="flex gap-2.5 py-3 first:pt-0 last:pb-0">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-surface text-[10px] font-bold text-soft">
+        {index + 1}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 flex-1 font-cn text-[15px] font-semibold leading-snug">{seg.text}</p>
+          <SpeakButton text={seg.text} title={`Listen to ${seg.text}`} className="mt-0.5 h-6 w-6 shrink-0" size={12} />
         </div>
-        <span className="text-xs font-medium text-accent">{seg.pinyin}</span>
-        <span className="min-w-0 flex-1 text-right text-sm text-soft">{seg.literal}</span>
+        <p className="mt-0.5 break-words text-[11px] font-medium leading-relaxed text-accent">{seg.pinyin}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-soft">{seg.literal}</p>
       </div>
-    </div>
+    </li>
   );
 }
 
@@ -113,7 +114,7 @@ export default function ResultView({ result }: { result: TeachResult | SessionDe
         ) : (
           <p className="font-cn text-2xl font-semibold leading-relaxed md:text-3xl">{displayText}</p>
         )}
-        <p className="mt-2 text-[15px] font-medium text-accent">{result.pinyin}</p>
+        <p className="mt-2 break-words text-[15px] font-medium text-accent">{result.pinyin}</p>
         <p className="mt-4 text-[15px] leading-relaxed">{meaningText}</p>
       </Card>
 
@@ -134,11 +135,11 @@ export default function ResultView({ result }: { result: TeachResult | SessionDe
 
       {result.segments.length > 0 && (
         <Card title="Chunk by chunk · 分句" action={<CopyButton text={result.segments.map((s) => `${s.text} — ${s.literal}`).join("\n")} />}>
-          <div className="space-y-2">
+          <ul className="divide-y divide-line">
             {result.segments.map((seg, i) => (
-              <SegmentRow key={i} seg={seg} />
+              <SegmentRow key={i} seg={seg} index={i} />
             ))}
-          </div>
+          </ul>
         </Card>
       )}
 
@@ -158,7 +159,7 @@ export default function ResultView({ result }: { result: TeachResult | SessionDe
             {result.grammar.map((g, i) => (
               <li key={i} className="flex gap-3">
                 <span className="mt-2 flex h-2 w-2 shrink-0 rounded-full bg-accent" />
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold">{g.point}</div>
                   <div className="mt-0.5 text-[15px] leading-relaxed text-soft">{g.explanation}</div>
                 </div>

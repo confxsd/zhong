@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Clock,
+  Flame,
   GraduationCap,
-  Languages,
+  LayoutDashboard,
   Library,
+  Map,
   Moon,
   RotateCcw,
   Sun,
@@ -11,17 +13,20 @@ import {
 import { useEffect, useState } from "react";
 import { Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { api } from "./api/client";
+import DashboardPage from "./pages/DashboardPage";
 import HistoryDetailPage from "./pages/HistoryDetailPage";
 import HistoryPage from "./pages/HistoryPage";
 import LibraryPage from "./pages/LibraryPage";
 import ReviewPage from "./pages/ReviewPage";
+import TrackPage from "./pages/TrackPage";
 import TranslatePage from "./pages/TranslatePage";
 
 const NAV = [
-  { to: "/", label: "Study", cn: "学习", icon: GraduationCap, end: true },
-  { to: "/library", label: "Library", cn: "词库", icon: Library },
+  { to: "/", label: "Home", cn: "首页", icon: LayoutDashboard, end: true },
+  { to: "/study", label: "Study", cn: "学习", icon: GraduationCap },
   { to: "/review", label: "Review", cn: "复习", icon: RotateCcw },
-  { to: "/history", label: "History", cn: "记录", icon: Clock },
+  { to: "/track", label: "Track", cn: "课程", icon: Map },
+  { to: "/library", label: "Library", cn: "词库", icon: Library },
 ];
 
 function ThemeToggle({ dark, onToggle }: { dark: boolean; onToggle: () => void }) {
@@ -85,7 +90,7 @@ function SidebarContent({ dark, onToggle }: { dark: boolean; onToggle: () => voi
 
       <div className="px-4 py-4">
         <div className="mb-3 grid grid-cols-3 gap-2 text-center">
-          <button onClick={() => navigate("/library")} title="Words in library" className="rounded-xl bg-surface px-1 py-2 transition hover:bg-surface-strong">
+          <button onClick={() => navigate("/library")} title="Words in memory" className="rounded-xl bg-surface px-1 py-2 transition hover:bg-surface-strong">
             <div className="text-sm font-bold text-ink">{stats ? stats.totalVocab : "–"}</div>
             <div className="text-[10px] text-soft">words</div>
           </button>
@@ -95,15 +100,20 @@ function SidebarContent({ dark, onToggle }: { dark: boolean; onToggle: () => voi
             </div>
             <div className="text-[10px] text-soft">due</div>
           </button>
-          <button onClick={() => navigate("/history")} title="Study sessions" className="rounded-xl bg-surface px-1 py-2 transition hover:bg-surface-strong">
-            <div className="text-sm font-bold text-ink">{stats ? stats.sessions : "–"}</div>
-            <div className="text-[10px] text-soft">sessions</div>
+          <button onClick={() => navigate("/review")} title="Day streak" className="rounded-xl bg-surface px-1 py-2 transition hover:bg-surface-strong">
+            <div className="flex items-center justify-center gap-0.5 text-sm font-bold text-amber">
+              <Flame size={11} />
+              {stats ? stats.streak : "–"}
+            </div>
+            <div className="text-[10px] text-soft">streak</div>
           </button>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-soft">
-            <Languages size={14} />
-            zh ⇄ en
+            <Clock size={14} />
+            <button onClick={() => navigate("/history")} className="transition hover:text-ink">
+              History
+            </button>
           </div>
           <ThemeToggle dark={dark} onToggle={onToggle} />
         </div>
@@ -137,22 +147,30 @@ function AppShell() {
         </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around bg-paper px-2 py-2 md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex justify-around bg-paper px-1 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden">
         {NAV.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `relative flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 text-[11px] font-medium transition ${
+              `relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium transition ${
                 isActive ? "text-accent" : "text-soft"
               }`
             }
           >
             <item.icon size={20} />
-            {item.label}
+            <span className="max-w-full truncate">{item.label}</span>
           </NavLink>
         ))}
+        <button
+          onClick={() => setDark((d) => !d)}
+          aria-label="Toggle dark mode"
+          className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 text-[11px] font-medium text-soft transition"
+        >
+          {dark ? <Sun size={20} /> : <Moon size={20} />}
+          <span className="max-w-full truncate">{dark ? "Light" : "Dark"}</span>
+        </button>
       </nav>
     </div>
   );
@@ -162,9 +180,11 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<TranslatePage />} />
+        <Route index element={<DashboardPage />} />
+        <Route path="/study" element={<TranslatePage />} />
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/review" element={<ReviewPage />} />
+        <Route path="/track" element={<TrackPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/history/:id" element={<HistoryDetailPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,4 +1,5 @@
 import type { Env } from "../types.js";
+import { extractJson } from "./schema.js";
 import type { AIProvider, ChatJsonOptions, ChatMessage } from "./types.js";
 
 type AIProviderName = "deepseek" | "openai" | "openai-compatible";
@@ -98,7 +99,13 @@ class OpenAICompatibleProvider implements AIProvider {
     try {
       parsed = JSON.parse(content);
     } catch {
-      throw new Error(`${this.name} did not return valid JSON`);
+      // Some models wrap the JSON in prose or code fences despite
+      // response_format; fall back to extracting the first JSON object.
+      try {
+        parsed = JSON.parse(extractJson(content));
+      } catch {
+        throw new Error(`${this.name} did not return valid JSON`);
+      }
     }
     return parsed;
   }

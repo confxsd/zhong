@@ -22,23 +22,31 @@ export function formatDate(iso: string): string {
   });
 }
 
-/** Next interval label given the current SRS box and a grade (box -> days). */
-export const SRS_DAYS = [1, 1, 2, 4, 7, 14, 30, 60];
-
-export function nextIntervalLabel(box: number, grade: string): string {
-  let next = box;
-  if (grade === "again") next = 1;
-  else if (grade === "hard") next = Math.max(1, box);
-  else if (grade === "good") next = box === 0 ? 2 : Math.min(7, box + 1);
-  else next = Math.min(7, box + 2);
-  return daysLabel(SRS_DAYS[next]);
-}
-
 export function daysLabel(days: number): string {
   if (days <= 1) return "1 day";
   if (days < 30 && days % 7 !== 0) return `${days} days`;
   const weeks = Math.round(days / 7);
   return `${weeks} ${weeks === 1 ? "week" : "weeks"}`;
+}
+
+/** Compact FSRS interval label from milliseconds ("10m", "3h", "7d", "3w", "2mo"). */
+export function intervalLabel(ms: number): string {
+  if (ms <= 0) return "now";
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  if (days < 14) return `${days}d`;
+  const weeks = Math.round(days / 7);
+  if (days < 60) return `${weeks}w`;
+  return `${Math.round(days / 30)}mo`;
+}
+
+/** Today's date in Chinese: 2026年8月17日 星期一 */
+export function chineseDate(now = new Date()): string {
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 星期${weekdays[now.getDay()]}`;
 }
 
 export const GRADES: { key: "again" | "hard" | "good" | "easy"; label: string; hint: string; tone: "hard" | "neutral" | "good" | "great" }[] = [

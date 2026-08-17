@@ -8,5 +8,6 @@ dist/
 .DS_Store
 *.log.wrangler/
 .dev.vars
+backups/
 apps/cloud/public/*
 !apps/cloud/public/.gitkeep

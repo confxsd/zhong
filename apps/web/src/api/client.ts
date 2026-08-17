@@ -1,10 +1,13 @@
 import type {
   Grade,
   Health,
+  Plan,
   ReviewCard,
   SessionDetail,
   SessionSummary,
   TeachResult,
+  Track,
+  TrackLessonResult,
   VocabStatus,
   VocabWord,
 } from "../types";
@@ -61,4 +64,9 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ grade }),
     }),
+
+  plan: () => request<Plan>("/api/plan"),
+  tracks: () => request<Track[]>("/api/tracks"),
+  track: (slug: string) => request<Track>(`/api/tracks/${slug}`),
+  trackLesson: (slug: string) => request<TrackLessonResult>(`/api/tracks/${slug}/lesson`, { method: "POST" }),
 };

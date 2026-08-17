@@ -24,7 +24,13 @@ Mandarin, simplified characters, and pinyin.
 - Inline selection pill and teaching card for Chinese text across macOS
 - Translation, pinyin, grammar, context, vocabulary, and learning tips
 - Persistent SQLite vocabulary memory and study history
-- Leitner-style spaced repetition review
+- FSRS spaced repetition (adaptive per-word scheduling, replacing Leitner boxes)
+- Review modes: reading, listening, and pinyin typing — with context cards
+  showing the original sentence each word was first met in
+- Home dashboard: streaks, retention forecast, daily adaptive plan
+- HSK 1 curriculum track (150 words + 34 grammar points, school-aligned),
+  with AI-written story lessons per batch of 5 words
+- Tone drill and pinyin practice built into the Track page
 - Dark responsive web library and review experience
 - Provider-agnostic AI layer: DeepSeek, OpenAI, Ollama, Groq, and other
   OpenAI-compatible APIs
@@ -49,16 +55,17 @@ Local development (optional):
 
 ```bash
 npm install
-cp .env.example .env
-# Add DEEPSEEK_API_KEY to .env
+cp apps/cloud/.dev.vars.example apps/cloud/.dev.vars
+# Add DEEPSEEK_API_KEY to apps/cloud/.dev.vars
 npm run dev
 ```
 
+`npm run dev` runs the Vite web app plus `wrangler dev` (the worker on
+localhost:4450 with a local D1 replica — same migrations, same schema).
 Open `http://localhost:5173` in development. Production build:
 
 ```bash
 npm run build
-npm start
 ```
 
 Local development data is stored at `apps/server/data/zhong.db`.
@@ -145,13 +152,12 @@ AI_BASE_URL=http://localhost:11434/v1
 AI_MODEL=llama3
 ```
 
-The provider interface lives in `apps/server/src/ai/types.ts`.
+The provider interface lives in `apps/cloud/src/ai/types.ts`.
 
 ## Structure
 
 ```text
-apps/server/       Express API, SQLite, AI providers, SRS (local dev)
-apps/cloud/        Cloudflare Worker + D1 backend, deployed at zhong.rome.markets
+apps/cloud/        Cloudflare Worker + D1 backend (the only backend), deployed at zhong.rome.markets
 apps/web/          React, Vite, Tailwind, library and review UI
 apps/picker/       Native macOS selection overlay
 apps/menubar/      Native macOS menubar app
@@ -169,15 +175,15 @@ npm run typecheck
 npm run build
 ```
 
-Runtime files and local secrets are ignored by git. The SQLite database is
-only used in local development; the Mac apps connect to the cloud backend.
+Runtime files and local secrets are ignored by git. All data lives in the
+cloud D1 database — there is no local database.
 
 ## Cloud deployment
 
-`apps/cloud` is the production backend (Cloudflare Worker + D1, same API as
-the local server), deployed at https://zhong.rome.markets. It also serves the
-web UI: `npm run deploy:cloud` rebuilds `apps/web`, syncs `dist` into
-`apps/cloud/public`, and runs `wrangler deploy`.
+`apps/cloud` is the only backend (Cloudflare Worker + D1), deployed at
+https://zhong.rome.markets. It also serves the web UI: `npm run deploy:cloud`
+rebuilds `apps/web`, syncs `dist` into `apps/cloud/public`, and runs
+`wrangler deploy`.
 
 Secrets are never committed — set them on the worker once:
 
@@ -210,6 +216,6 @@ vocab), settings with backend URL config + health check.
 on iOS 18.4.
 
 **Cloud backend:** Deployed at https://zhong.rome.markets (Cloudflare Worker
-+ D1, same API as the local server). Project lives in `apps/cloud`.
++ D1). Project lives in `apps/cloud`.
 Set the backend URL in Settings to `https://zhong.rome.markets` and run the
 health check.

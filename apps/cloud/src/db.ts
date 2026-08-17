@@ -11,5 +11,6 @@ export type VocabRow = {
   correct_count: number;
   last_reviewed_at: string | null;
   next_review_at: string | null;
+  fsrs_state: string | null;
   created_at: string;
 };

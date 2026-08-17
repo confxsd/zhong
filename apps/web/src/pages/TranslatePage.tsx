@@ -94,7 +94,7 @@ export default function TranslatePage() {
           }}
           placeholder="例如：我又想起来了，那个地方我们去年去过。"
           rows={5}
-          className="w-full resize-y rounded-2xl bg-surface p-4 text-[15px] leading-relaxed outline-none transition placeholder:text-soft/70 focus:bg-surface-strong"
+          className="w-full resize-y rounded-2xl bg-surface p-4 text-[16px] leading-relaxed outline-none transition placeholder:text-soft/70 focus:bg-surface-strong"
         />
 
         <div className="mt-3.5 flex flex-wrap items-center gap-2">

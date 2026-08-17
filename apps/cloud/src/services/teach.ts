@@ -1,6 +1,7 @@
 import { getProvider } from "../ai/provider.js";
 import { validateTeachOutput, z, type VocabItemInput } from "../ai/schema.js";
 import type { VocabRow } from "../db.js";
+import { normalizeHanzi, normalizeInput } from "../lib/normalize.js";
 import type { Env } from "../types.js";
 
 export type KnownWord = { hanzi: string; meaning: string; box: number };
@@ -97,15 +98,16 @@ export interface TeachResult {
 }
 
 async function upsertVocab(db: D1Database, item: VocabItemInput, known: Set<string>): Promise<VocabResult> {
+  const hanzi = normalizeHanzi(item.hanzi);
   const existing = await db
     .prepare("SELECT id, meaning FROM vocab WHERE hanzi = ?")
-    .bind(item.hanzi)
+    .bind(hanzi)
     .first<Pick<VocabRow, "id" | "meaning"> | null>();
 
   if (existing) {
-    const alreadyKnown = known.has(item.hanzi);
+    const alreadyKnown = known.has(hanzi);
     return {
-      hanzi: item.hanzi,
+      hanzi,
       pinyin: item.pinyin,
       meaning: item.meaning,
       example: item.example,
@@ -121,11 +123,11 @@ async function upsertVocab(db: D1Database, item: VocabItemInput, known: Set<stri
       `INSERT INTO vocab (hanzi, pinyin, meaning, example, example_trans)
        VALUES (?, ?, ?, ?, ?)`
     )
-    .bind(item.hanzi, item.pinyin, item.meaning, item.example, item.example_translation)
+    .bind(hanzi, item.pinyin, item.meaning, item.example, item.example_translation)
     .run();
 
   return {
-    hanzi: item.hanzi,
+    hanzi,
     pinyin: item.pinyin,
     meaning: item.meaning,
     example: item.example,
@@ -146,11 +148,11 @@ export async function teach(env: Env, text: string, signal?: AbortSignal): Promi
   const raw = await provider.chatJson<unknown>(messages, { signal: signal ?? AbortSignal.timeout(90_000) });
   const output = validateTeachOutput(raw);
 
-  const known = new Set((await knownWordsIn(db, trimmed)).map((k) => k.hanzi));
+  const known = new Set((await knownWordsIn(db, trimmed)).map((k) => normalizeHanzi(k.hanzi)));
   const knownSetIds = new Set<number>();
   const vocabResults: VocabResult[] = [];
   for (const item of output.vocab) {
-    if (known.has(item.hanzi)) continue;
+    if (known.has(normalizeHanzi(item.hanzi))) continue;
     const r = await upsertVocab(db, item, known);
     if (r.id) knownSetIds.add(r.id);
     vocabResults.push(r);
@@ -158,23 +160,56 @@ export async function teach(env: Env, text: string, signal?: AbortSignal): Promi
 
   const recognized = (await knownWordsIn(db, trimmed)).map((k) => ({ hanzi: k.hanzi, meaning: k.meaning }));
 
-  const sessionInsert = await db
-    .prepare(
-      `INSERT INTO sessions (input_text, pinyin, translation, segments, breakdown, grammar, notes, recognized)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .bind(
-      trimmed,
-      output.pinyin,
-      output.translation,
-      JSON.stringify(output.segments),
-      JSON.stringify(output.breakdown),
-      JSON.stringify(output.grammar),
-      JSON.stringify(output.notes),
-      JSON.stringify(recognized)
-    )
-    .run();
-  const sessionId = Number(sessionInsert.meta.last_row_id);
+  // Dedup sessions by a normalized key so re-teaching the same text
+  // (double clicks, case or punctuation differences) refreshes the
+  // existing history row instead of creating a duplicate.
+  const inputNorm = normalizeInput(trimmed);
+  const existingSession = await db
+    .prepare("SELECT id FROM sessions WHERE input_norm = ?")
+    .bind(inputNorm)
+    .first<{ id: number } | null>();
+
+  let sessionId: number;
+  if (existingSession) {
+    sessionId = existingSession.id;
+    await db
+      .prepare(
+        `UPDATE sessions
+         SET pinyin = ?, translation = ?, segments = ?, breakdown = ?, grammar = ?, notes = ?, recognized = ?
+         WHERE id = ?`
+      )
+      .bind(
+        output.pinyin,
+        output.translation,
+        JSON.stringify(output.segments),
+        JSON.stringify(output.breakdown),
+        JSON.stringify(output.grammar),
+        JSON.stringify(output.notes),
+        JSON.stringify(recognized),
+        sessionId
+      )
+      .run();
+    await db.prepare("DELETE FROM session_vocab WHERE session_id = ?").bind(sessionId).run();
+  } else {
+    const sessionInsert = await db
+      .prepare(
+        `INSERT INTO sessions (input_text, input_norm, pinyin, translation, segments, breakdown, grammar, notes, recognized)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .bind(
+        trimmed,
+        inputNorm,
+        output.pinyin,
+        output.translation,
+        JSON.stringify(output.segments),
+        JSON.stringify(output.breakdown),
+        JSON.stringify(output.grammar),
+        JSON.stringify(output.notes),
+        JSON.stringify(recognized)
+      )
+      .run();
+    sessionId = Number(sessionInsert.meta.last_row_id);
+  }
 
   if (knownSetIds.size > 0) {
     const link = (id: number) =>

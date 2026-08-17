@@ -1,6 +1,6 @@
 # Zhōng 2.0 — Init Doc: A Personal China-Learning Platform
 
-Status: approved direction (Aug 2026) · Scope: docs only for now · Companion docs: `roadmap.md`, `features.md`, `implementation.md`, `xiamen-prep.md`
+Status: Phase 0 + Phase 1 core shipped (Aug 2026) · Companion docs: `roadmap.md`, `features.md`, `implementation.md`, `xiamen-prep.md`
 
 ## 1. What this is
 

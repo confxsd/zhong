@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { gradeSchema } from "../ai/schema.js";
 import type { VocabRow } from "../db.js";
-import { applyGrade, dueCards, nextDueCount } from "../services/srs.js";
+import { applyGrade, buildReviewCard, dueCards, nextDueCount } from "../services/srs.js";
 import type { Env } from "../types.js";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -23,7 +23,7 @@ app.post("/:id", async (c) => {
   if (!row) return c.json({ error: "Word not found" }, 404);
 
   const updated = await applyGrade(c.env.DB, row, grade);
-  return c.json({ card: updated, remaining: await nextDueCount(c.env.DB) });
+  return c.json({ card: await buildReviewCard(c.env.DB, updated), remaining: await nextDueCount(c.env.DB) });
 });
 
 export default app;

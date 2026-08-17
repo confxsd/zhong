@@ -75,10 +75,10 @@ export default function LibraryPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search hanzi, pinyin, or meaning…"
-            className="w-full rounded-xl bg-surface py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-soft/60 focus:bg-surface-strong"
+            className="w-full rounded-xl bg-surface py-2.5 pl-9 pr-3 text-[16px] outline-none transition placeholder:text-soft/60 focus:bg-surface-strong md:text-sm"
           />
         </div>
-        <div className="flex rounded-xl bg-surface p-1">
+        <div className="flex max-w-full flex-wrap rounded-xl bg-surface p-1">
           {FILTERS.map((f) => (
             <button
               key={f.key}
@@ -102,7 +102,7 @@ export default function LibraryPage() {
           <div className="text-sm text-soft">
             {search || filter !== "all" ? "Nothing matches — try a different filter." : "No words yet. Study a sentence and your vocabulary grows here automatically."}
           </div>
-          <Link to="/" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
+          <Link to="/study" className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-strong">
             Study something →
           </Link>
         </div>

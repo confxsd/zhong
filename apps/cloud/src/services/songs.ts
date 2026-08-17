@@ -1,5 +1,5 @@
 import { getProvider } from "../ai/provider.js";
-import { validateSongGloss, validateSongStudy } from "../ai/schema.js";
+import { validateSongGloss, validateSongStudy, type SongStudyOutput } from "../ai/schema.js";
 import { normalizeHanzi, normalizeInput } from "../lib/normalize.js";
 import { upsertVocab, type VocabResult } from "./teach.js";
 import type { Env } from "../types.js";
@@ -72,6 +72,7 @@ You receive a Chinese song's lyrics. Respond with JSON only, exactly this shape:
 Rules:
 - One entry per lyric line, in the exact order given. Keep every line, including repeated chorus lines and onomatopoeia ("la la la" keeps text as-is, pinyin the same, translation the same).
 - text must match the lyric line character-for-character.
+- Bracket section markers like [主歌], [導歌], [副歌], [间奏] are labels, not lyrics: give them pinyin and a short translation such as "verse", "pre-chorus / bridge", "chorus", "interlude".
 - Translations are natural English, not word-for-word, but keep them close enough for a learner to map words.
 - Keep translation beginner-readable; note the overall meaning of tricky idioms in "notes".`;
 
@@ -240,6 +241,141 @@ async function reviewedWordsIn(db: D1Database, text: string): Promise<{ hanzi: s
   return res.results.filter((r) => text.includes(r.hanzi));
 }
 
+type GlossLine = { text: string; pinyin: string; translation: string };
+
+/** Bracket section markers in lyrics (e.g. [主歌] "verse") — deterministic,
+ *  no AI needed. Used as a fallback when the gloss skipped them. */
+const SECTION_LABELS: Record<string, { pinyin: string; translation: string }> = {
+  "主歌": { pinyin: "zhǔ gē", translation: "verse" },
+  "導歌": { pinyin: "dǎo gē", translation: "pre-chorus / bridge" },
+  "副歌": { pinyin: "fù gē", translation: "chorus" },
+  "間奏": { pinyin: "jiān zòu", translation: "interlude" },
+  "间奏": { pinyin: "jiān zòu", translation: "interlude" },
+  "前奏": { pinyin: "qián zòu", translation: "intro" },
+  "尾奏": { pinyin: "wěi zòu", translation: "outro" },
+  "独白": { pinyin: "dú bái", translation: "spoken part" },
+  "独唱": { pinyin: "dú chàng", translation: "solo" },
+};
+
+const SECTION_MARKER = /^\s*[\[【（(]([^\]】）)]+)[\]】）)]\s*$/;
+
+function sectionLabelFor(text: string): { pinyin: string; translation: string } | null {
+  const m = text.match(SECTION_MARKER);
+  if (!m) return null;
+  const key = m[1].trim();
+  const known = SECTION_LABELS[key];
+  if (known) return known;
+  return { pinyin: "", translation: `section: ${key}` };
+}
+
+interface SessionFields {
+  input_text: string;
+  pinyin: string;
+  translation: string;
+  segments: string;
+  grammar: string;
+  notes: string;
+  recognized: string;
+  kind: "song";
+}
+
+function sessionFieldsFor(
+  gloss: GlossLine[],
+  study: SongStudyOutput,
+  known: { hanzi: string; meaning: string }[],
+  i: number
+): SessionFields {
+  const g = gloss[i];
+  const lineStudy = study.lines[i] ?? { grammar: [], notes: [] };
+  const label = g.pinyin && g.translation ? null : sectionLabelFor(g.text);
+  const pinyin = g.pinyin || label?.pinyin || "";
+  const translation = g.translation || label?.translation || "";
+  return {
+    input_text: g.text,
+    pinyin,
+    translation,
+    segments: JSON.stringify([{ text: g.text, pinyin, literal: translation }]),
+    grammar: JSON.stringify(lineStudy.grammar),
+    notes: JSON.stringify(lineStudy.notes),
+    recognized: JSON.stringify(
+      known.filter((k) => g.text.includes(k.hanzi)).map((k) => ({ hanzi: k.hanzi, meaning: k.meaning }))
+    ),
+    kind: "song",
+  };
+}
+
+const MAX_REPAIR_ATTEMPTS = 3;
+
+/**
+ * Verify that every line's session holds the full lesson (pinyin,
+ * translation, segments, grammar, notes). Fills any missing fields and
+ * re-checks until everything verifies — so a partially-written run heals on
+ * the next run instead of leaving half-translated history rows.
+ */
+async function repairSessions(
+  db: D1Database,
+  gloss: GlossLine[],
+  study: SongStudyOutput,
+  known: { hanzi: string; meaning: string }[],
+  finalIds: (number | null)[]
+): Promise<void> {
+  for (let attempt = 0; attempt < MAX_REPAIR_ATTEMPTS; attempt++) {
+    const checks: D1PreparedStatement[] = [];
+    const expByIndex = new Map<number, SessionFields>();
+    finalIds.forEach((id, i) => {
+      if (id === null) return;
+      checks.push(db.prepare("SELECT pinyin, translation, segments, grammar, notes, recognized, kind FROM sessions WHERE id = ?").bind(id));
+      expByIndex.set(i, sessionFieldsFor(gloss, study, known, i));
+    });
+
+    const results: D1Result[] = [];
+    for (let i = 0; i < checks.length; i += 50) {
+      results.push(...(await db.batch(checks.slice(i, i + 50))));
+    }
+
+    const repairs: D1PreparedStatement[] = [];
+    let checkIdx = 0;
+    for (let i = 0; i < finalIds.length; i++) {
+      const id = finalIds[i];
+      if (id === null) continue;
+      const exp = expByIndex.get(i);
+      const row = results[checkIdx++]?.results?.[0] as Record<string, unknown> | undefined;
+      if (!exp || !row) {
+        repairs.push(
+          db
+            .prepare(
+              `UPDATE sessions SET input_text = ?, pinyin = ?, translation = ?, segments = ?, grammar = ?, notes = ?, recognized = ?, kind = 'song' WHERE id = ?`
+            )
+            .bind(exp?.input_text ?? "", exp?.pinyin ?? "", exp?.translation ?? "", exp?.segments ?? "[]", exp?.grammar ?? "[]", exp?.notes ?? "[]", exp?.recognized ?? "[]", id)
+        );
+        continue;
+      }
+      if (
+        row.pinyin !== exp.pinyin ||
+        row.translation !== exp.translation ||
+        row.segments !== exp.segments ||
+        row.grammar !== exp.grammar ||
+        row.notes !== exp.notes ||
+        row.recognized !== exp.recognized ||
+        row.kind !== exp.kind
+      ) {
+        repairs.push(
+          db
+            .prepare(
+              `UPDATE sessions SET input_text = ?, pinyin = ?, translation = ?, segments = ?, grammar = ?, notes = ?, recognized = ?, kind = 'song' WHERE id = ?`
+            )
+            .bind(exp.input_text, exp.pinyin, exp.translation, exp.segments, exp.grammar, exp.notes, exp.recognized, id)
+        );
+      }
+    }
+
+    if (repairs.length === 0) return;
+    for (let i = 0; i < repairs.length; i += 50) {
+      await db.batch(repairs.slice(i, i + 50));
+    }
+  }
+}
+
 export async function studyWholeSong(env: Env, songId: number, signal?: AbortSignal): Promise<SongBulkStudyResult> {
   const db = env.DB;
   const song = await getSong(db, songId);
@@ -253,24 +389,38 @@ export async function studyWholeSong(env: Env, songId: number, signal?: AbortSig
       : "No previously-studied words appear in this song.";
 
   const provider = getProvider(env);
-  const raw = await provider.chatJson<unknown>(
-    [
-      { role: "system", content: studySystemPrompt },
-      {
-        role: "user",
-        content: [
-          `Title: ${song.title}`,
-          `Artist: ${song.artist || "unknown"}`,
-          knownLine,
-          "",
-          "Glossed lyrics (line by line):",
-          ...gloss.map((g, i) => `${i + 1}. ${g.text} / ${g.pinyin} / ${g.translation}`),
-        ].join("\n"),
-      },
-    ],
-    { signal: signal ?? AbortSignal.timeout(180_000), maxTokens: 8192 }
-  );
-  const study = validateSongStudy(raw);
+  let study: ReturnType<typeof validateSongStudy>;
+  {
+    let attempt = 0;
+    for (;;) {
+      try {
+        const raw = await provider.chatJson<unknown>(
+          [
+            { role: "system", content: studySystemPrompt },
+            {
+              role: "user",
+              content: [
+                `Title: ${song.title}`,
+                `Artist: ${song.artist || "unknown"}`,
+                knownLine,
+                "",
+                "Glossed lyrics (line by line):",
+                ...gloss.map((g, i) => `${i + 1}. ${g.text} / ${g.pinyin} / ${g.translation}`),
+              ].join("\n"),
+            },
+          ],
+          { signal: signal ?? AbortSignal.timeout(180_000), maxTokens: 8192 }
+        );
+        study = validateSongStudy(raw);
+        break;
+      } catch (err) {
+        // Models occasionally emit malformed output (notes as a string,
+        // missing lines, etc.). Retry a couple of times before giving up.
+        if (attempt >= 2) throw err;
+        attempt++;
+      }
+    }
+  }
 
   if (study.lines.length !== gloss.length) {
     const padded = [...study.lines];
@@ -328,20 +478,13 @@ export async function studyWholeSong(env: Env, songId: number, signal?: AbortSig
   for (let i = 0; i < gloss.length; i++) {
     const id = finalIds[i];
     if (id === null) continue;
-    const g = gloss[i];
-    const lineStudy = study.lines[i];
-    const segments = JSON.stringify([{ text: g.text, pinyin: g.pinyin, literal: g.translation }]);
-    const grammar = JSON.stringify(lineStudy.grammar);
-    const notes = JSON.stringify(lineStudy.notes);
-    const recognized = JSON.stringify(
-      known.filter((k) => g.text.includes(k.hanzi)).map((k) => ({ hanzi: k.hanzi, meaning: k.meaning }))
-    );
+    const f = sessionFieldsFor(gloss, study, known, i);
     updateStmts.push(
       db
         .prepare(
           `UPDATE sessions SET input_text = ?, pinyin = ?, translation = ?, segments = ?, grammar = ?, notes = ?, recognized = ?, kind = 'song' WHERE id = ?`
         )
-        .bind(g.text, g.pinyin, g.translation, segments, grammar, notes, recognized, id)
+        .bind(f.input_text, f.pinyin, f.translation, f.segments, f.grammar, f.notes, f.recognized, id)
     );
   }
   for (let i = 0; i < updateStmts.length; i += 50) {
@@ -391,6 +534,10 @@ export async function studyWholeSong(env: Env, songId: number, signal?: AbortSig
       songId
     )
     .run();
+
+  // Repair pass: verify every session holds the full lesson and fill any
+  // missing pieces. Idempotent — re-running a study heals stale rows.
+  await repairSessions(db, gloss, study, known, finalIds);
 
   const updated = await getSong(db, songId);
   if (!updated) throw new Error("Failed to load the song after studying it");

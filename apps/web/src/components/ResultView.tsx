@@ -2,6 +2,8 @@ import { AlertCircle, BookMarked, Check } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { NavLink } from "react-router-dom";
 import type { Breakdown, Segments, SessionDetail, TeachResult, VocabResult } from "../types";
+import SpeakButton from "./SpeakButton";
+import SpeakText from "./SpeakText";
 
 function Card({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -35,15 +37,19 @@ function CopyButton({ text, label = "copy" }: { text: string; label?: string }) 
 function VocabChip({ v }: { v: VocabResult }) {
   return (
     <div className="anim-pop rounded-2xl bg-jade-soft p-4">
-      <div className="flex items-baseline gap-3">
+      <div className="flex items-center gap-2">
+        <SpeakButton text={v.hanzi} title={`Listen to ${v.hanzi}`} className="h-7 w-7 bg-paper/60 hover:bg-paper" size={13} />
         <span className="font-cn text-xl font-bold leading-none">{v.hanzi}</span>
         <span className="text-xs font-medium text-jade">{v.pinyin}</span>
       </div>
       <div className="mt-1.5 text-[13px] text-ink/80">{v.meaning}</div>
       {v.example && (
-        <div className="mt-2.5 rounded-xl bg-paper/70 p-2.5 text-xs leading-relaxed">
-          <span className="font-cn-sans text-[13px] font-medium">{v.example}</span>
-          {v.example_translation && <div className="mt-0.5 text-soft">{v.example_translation}</div>}
+        <div className="mt-2.5 flex items-start gap-2 rounded-xl bg-paper/70 p-2.5 text-xs leading-relaxed">
+          <SpeakButton text={v.example} title="Listen to example" className="h-6 w-6" size={12} />
+          <div>
+            <span className="font-cn-sans text-[13px] font-medium">{v.example}</span>
+            {v.example_translation && <div className="mt-0.5 text-soft">{v.example_translation}</div>}
+          </div>
         </div>
       )}
     </div>
@@ -52,7 +58,8 @@ function VocabChip({ v }: { v: VocabResult }) {
 
 function BreakdownTile({ item }: { item: Breakdown }) {
   return (
-    <div className="rounded-2xl bg-surface p-3.5 transition hover:bg-surface-strong">
+    <div className="relative rounded-2xl bg-surface p-3.5 transition hover:bg-surface-strong">
+      <SpeakButton text={item.char} title={`Listen to ${item.char}`} className="absolute right-2 top-2 h-7 w-7" size={13} />
       <div className="font-cn text-3xl font-bold leading-none">{item.char}</div>
       <div className="mt-2 text-xs font-semibold text-accent">{item.pinyin}</div>
       <div className="mt-1 text-[13px] leading-snug">{item.meaning}</div>
@@ -63,10 +70,17 @@ function BreakdownTile({ item }: { item: Breakdown }) {
 
 function SegmentRow({ seg }: { seg: Segments }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-surface px-4 py-3">
-      <span className="font-cn text-lg font-semibold">{seg.text}</span>
-      <span className="text-xs font-medium text-accent">{seg.pinyin}</span>
-      <span className="flex-1 text-right text-sm text-soft">{seg.literal}</span>
+    <div className="rounded-2xl bg-surface px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <SpeakButton text={seg.text} title={`Listen to ${seg.text}`} className="h-7 w-7" size={13} />
+        <div className="flex flex-wrap gap-x-0.5">
+          {Array.from(seg.text).map((ch, i) => (
+            <SpeakText key={i} text={ch} className="px-1 py-0.5 font-cn text-lg font-semibold" />
+          ))}
+        </div>
+        <span className="text-xs font-medium text-accent">{seg.pinyin}</span>
+        <span className="min-w-0 flex-1 text-right text-sm text-soft">{seg.literal}</span>
+      </div>
     </div>
   );
 }
@@ -82,9 +96,23 @@ export default function ResultView({ result }: { result: TeachResult | SessionDe
     <div className="space-y-4">
       <Card
         title={hasChinese ? "Translation · 翻译" : "How to say it · 怎么说"}
-        action={<CopyButton text={`${displayText}\n${result.pinyin}\n${meaningText}`} label="copy all" />}
+        action={
+          <div className="flex items-center gap-1">
+            <SpeakButton text={displayText} title="Listen" />
+            <SpeakButton text={displayText} rate={0.65} title="Listen slowly" className="h-7 w-7" size={13} />
+            <CopyButton text={`${displayText}\n${result.pinyin}\n${meaningText}`} label="copy all" />
+          </div>
+        }
       >
-        <p className="font-cn text-2xl font-semibold leading-relaxed md:text-3xl">{displayText}</p>
+        {hasChinese ? (
+          <p className="font-cn text-2xl font-semibold leading-relaxed md:text-3xl">
+            {Array.from(displayText).map((ch, i) => (
+              <SpeakText key={i} text={ch} className="px-0.5 py-0.5" />
+            ))}
+          </p>
+        ) : (
+          <p className="font-cn text-2xl font-semibold leading-relaxed md:text-3xl">{displayText}</p>
+        )}
         <p className="mt-2 text-[15px] font-medium text-accent">{result.pinyin}</p>
         <p className="mt-4 text-[15px] leading-relaxed">{meaningText}</p>
       </Card>
@@ -95,7 +123,7 @@ export default function ResultView({ result }: { result: TeachResult | SessionDe
             {result.recognized.map((w) => (
               <span key={w.hanzi} className="flex items-center gap-1.5 rounded-full bg-amber-soft px-3 py-1 text-sm">
                 <BookMarked size={14} className="text-amber" />
-                <span className="font-cn font-semibold">{w.hanzi}</span>
+                <SpeakText text={w.hanzi} className="font-cn font-semibold" />
                 <span className="text-soft">{w.meaning}</span>
               </span>
             ))}

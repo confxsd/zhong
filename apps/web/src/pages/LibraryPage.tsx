@@ -3,6 +3,7 @@ import { BookOpen, ChevronDown, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import SpeakButton from "../components/SpeakButton";
 import { useToast } from "../components/Toast";
 import { daysLabel, timeAgo } from "../lib/format";
 import type { VocabStatus, VocabWord } from "../types";
@@ -120,6 +121,7 @@ export default function LibraryPage() {
                   <span className="min-w-0 flex-1 truncate text-sm text-soft">{w.meaning}</span>
                 </button>
                 <StatusBadge status={w.status} />
+                <SpeakButton text={w.hanzi} title={`Listen to ${w.hanzi}`} className="h-8 w-8" />
                 <span className={`hidden w-20 shrink-0 text-right text-xs ${dueSoon ? "font-semibold text-accent" : "text-soft"} sm:block`}>
                   {dueSoon ? "due now" : `next ${timeAgo(w.next_review_at)}`}
                 </span>
@@ -153,8 +155,11 @@ export default function LibraryPage() {
                     </div>
                     {w.example && (
                       <div className="sm:col-span-2">
-                        <div className="text-xs font-bold uppercase tracking-wider text-soft">Example</div>
-                        <div className="mt-1 font-cn-sans">{w.example}</div>
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase tracking-wider text-soft">Example</span>
+                          <SpeakButton text={w.example} title="Listen to example" className="h-6 w-6" size={12} />
+                        </div>
+                        <div className="font-cn-sans">{w.example}</div>
                         {w.example_trans && <div className="mt-0.5 text-soft">{w.example_trans}</div>}
                       </div>
                     )}

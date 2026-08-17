@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, PartyPopper, RotateCcw } from "lucide-react";
+import { ChevronRight, Headphones, PartyPopper, RotateCcw, Volume2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
+import SpeakButton from "../components/SpeakButton";
 import { useToast } from "../components/Toast";
 import { GRADES, nextIntervalLabel } from "../lib/format";
+import { speak } from "../lib/speech";
 import type { Grade, ReviewCard } from "../types";
 
 export default function ReviewPage() {
@@ -13,6 +15,7 @@ export default function ReviewPage() {
   const [queue, setQueue] = useState<ReviewCard[] | null>(null);
   const [position, setPosition] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [listen, setListen] = useState(false);
   const [history, setHistory] = useState<{ card: ReviewCard; grade: Grade }[]>([]);
   const [sessionStats, setSessionStats] = useState<{ total: number; correct: number; again: number }>({ total: 0, correct: 0, again: 0 });
 
@@ -55,6 +58,11 @@ export default function ReviewPage() {
   });
 
   const card: ReviewCard | null = queue ? queue[position] : null;
+
+  const handleCardClick = () => {
+    if (listen && !flipped && card) speak(card.hanzi);
+    setFlipped((f) => !f);
+  };
 
   if (!queue) {
     if (due.isLoading) {
@@ -112,8 +120,20 @@ export default function ReviewPage() {
         <h1 className="text-xl font-bold">
           Review <span className="font-cn text-accent">复习</span>
         </h1>
-        <div className="text-sm text-soft">
-          <span className="font-bold text-ink">{position + 1}</span> / {queue.length}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setListen((l) => !l)}
+            title="Listen mode — hear the word instead of reading it"
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+              listen ? "bg-accent text-white" : "bg-surface text-soft hover:bg-surface-strong hover:text-ink"
+            }`}
+          >
+            <Headphones size={14} />
+            Listen <span className="font-cn opacity-70">听</span>
+          </button>
+          <div className="text-sm text-soft">
+            <span className="font-bold text-ink">{position + 1}</span> / {queue.length}
+          </div>
         </div>
       </header>
 
@@ -125,28 +145,38 @@ export default function ReviewPage() {
       </div>
 
       {card && (
-        <div key={card.id} className="anim-pop" onClick={() => setFlipped((f) => !f)}>
+        <div key={card.id} className="anim-pop" onClick={handleCardClick}>
           <div className="flex min-h-80 cursor-pointer flex-col items-center justify-center rounded-[2rem] bg-paper p-8 text-center transition hover:bg-surface/40">
             <span className="mb-4 rounded-full bg-surface px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-soft">
-              {flipped ? "answer" : "tap to reveal"}
+              {flipped ? "answer" : listen ? "tap to listen" : "tap to reveal"}
             </span>
 
-            <div className={`font-cn text-7xl font-bold leading-none tracking-wide md:text-8xl ${flipped ? "text-accent" : ""}`}>{card.hanzi}</div>
+            {listen && !flipped ? (
+              <div className="flex h-44 w-44 items-center justify-center rounded-full bg-accent-soft transition group-hover:bg-accent-soft">
+                <Volume2 size={72} className="text-accent" />
+              </div>
+            ) : (
+              <div className={`font-cn text-7xl font-bold leading-none tracking-wide md:text-8xl ${flipped ? "text-accent" : ""}`}>{card.hanzi}</div>
+            )}
 
             <div className="mt-8 h-24 w-full">
               {flipped ? (
                 <div className="anim-rise space-y-2">
-                  <div className="text-lg font-semibold text-accent">{card.pinyin}</div>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="text-lg font-semibold text-accent">{card.pinyin}</div>
+                    <SpeakButton text={card.hanzi} title={`Listen to ${card.hanzi}`} className="h-7 w-7" size={13} />
+                  </div>
                   <div className="text-[15px] text-soft">{card.meaning}</div>
                   {card.example && (
-                    <div className="mx-auto max-w-sm rounded-2xl bg-surface px-3.5 py-2.5 text-sm">
+                    <div className="mx-auto flex max-w-sm items-center gap-2 rounded-2xl bg-surface px-3.5 py-2.5 text-sm">
                       <span className="font-cn-sans">{card.example}</span>
+                      <SpeakButton text={card.example} title="Listen to example" className="h-6 w-6" size={12} />
                       {card.example_trans && <span className="block text-xs text-soft">{card.example_trans}</span>}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="text-xs text-soft/60">How well do you remember it?</div>
+                <div className="text-xs text-soft/60">{listen ? "Recognize it by sound, then reveal the answer." : "How well do you remember it?"}</div>
               )}
             </div>
           </div>

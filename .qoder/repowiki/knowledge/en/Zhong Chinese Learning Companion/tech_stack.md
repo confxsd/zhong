@@ -1,0 +1,1 @@
+Hono v4 HTTP framework on Cloudflare Workers, Cloudflare D1 (SQLite) for persistence, Zod v4 for request validation, and a pluggable OpenAI-compatible chat-completions client supporting DeepSeek, OpenAI, and local Ollama/LM Studio backends — all configured via `wrangler.toml` vars and secrets.

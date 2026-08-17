@@ -1,0 +1,33 @@
+name = "zhong"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# Target account: blindsidenow@gmail.com
+account_id = "9da269cfd6196f2d0331f1a5cb8f1f85"
+
+# Custom domain on rome.markets (zone is active in this account).
+routes = [
+  { pattern = "zhong.rome.markets", custom_domain = true }
+]
+
+# --- D1 SQLite database ---
+# Vocabulary, sessions, SRS state, review log, rate limits.
+[[d1_databases]]
+binding = "DB"
+database_name = "zhong"
+database_id = "6931c043-7037-4e5e-b145-d3482103a77c"
+
+# --- Static assets: web UI build (synced from apps/web via scripts/sync-web.sh) ---
+[assets]
+directory = "./public"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
+# --- Config (secrets are set via `wrangler secret put`) ---
+[vars]
+AI_PROVIDER = "deepseek"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_MODEL = "deepseek-chat"
+
+[observability]
+enabled = true

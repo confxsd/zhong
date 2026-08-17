@@ -1,0 +1,1 @@
+Cloudflare Workers + D1 backend powering the zhong.rome.markets Chinese learning companion, providing vocabulary management, spaced repetition review, translation, and session tracking via a Hono API.

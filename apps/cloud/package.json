@@ -1,0 +1,25 @@
+{
+  "name": "@zhong/cloud",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Zhong (仲) — Cloudflare Worker + D1 backend for the Chinese learning companion, served at zhong.rome.markets",
+  "scripts": {
+    "dev": "wrangler dev --port 4450",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:apply": "wrangler d1 migrations apply zhong",
+    "db:apply:remote": "wrangler d1 migrations apply zhong --remote",
+    "sync:web": "bash scripts/sync-web.sh",
+    "deploy:full": "bash scripts/sync-web.sh && wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260811.1",
+    "typescript": "^5.7.0",
+    "wrangler": "^4.0.0"
+  }
+}

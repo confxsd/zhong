@@ -6,7 +6,8 @@ dist/
 *.db-wal
 *.db-shm
 .DS_Store
-*.log.wrangler/
+*.log
+.wrangler/
 .dev.vars
-apps/cloud/public/*
-!apps/cloud/public/.gitkeep
+public/*
+!public/.gitkeep

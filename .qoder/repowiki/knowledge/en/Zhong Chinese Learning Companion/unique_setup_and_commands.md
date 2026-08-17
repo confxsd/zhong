@@ -1,0 +1,1 @@
+`wrangler dev --port 4450` runs the local worker; `wrangler d1 migrations apply zhong` applies the D1 migration; `npm run sync:web` builds and copies the frontend SPA from `$ZHONG_REPO/apps/web/dist` into `public/`; `npm run deploy:full` runs both steps then deploys via `wrangler deploy`.

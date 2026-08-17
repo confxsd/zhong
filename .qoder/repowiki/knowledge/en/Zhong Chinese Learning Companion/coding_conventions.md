@@ -1,0 +1,5 @@
+- Route handlers validate all inputs with Zod schemas parsed directly from `c.req.query`, `c.req.param`, or `c.req.json()` before touching the database.
+- All D1 queries use parameterized `prepare(...).bind(...)` calls with positional `?` placeholders instead of string interpolation to prevent SQL injection.
+- Database rows are represented as TypeScript interfaces (e.g. `VocabRow` in `db.ts`) and returned from services rather than raw query results.
+- External AI provider configuration is resolved centrally in `ai/provider.ts` from `Env` bindings and exposed through a single `getProvider(env)` factory, keeping routes provider-agnostic.
+- Error handling is centralized in a global `app.onError` middleware that maps Zod errors to 400 and all other errors to 400/500 JSON responses.

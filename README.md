@@ -20,6 +20,8 @@ browser redirect.
 - Dark responsive web library and review experience
 - Provider-agnostic AI layer: DeepSeek, OpenAI, Ollama, Groq, and other
   OpenAI-compatible APIs
+- High-quality pronunciation everywhere: tap any character or word to hear
+  it (Google TTS via the cloud worker, cached at the edge)
 - Native macOS Services integration
 - Native menubar app with background server control
 
@@ -140,12 +142,15 @@ The provider interface lives in `apps/server/src/ai/types.ts`.
 ## Structure
 
 ```text
-apps/server/       Express API, SQLite, AI providers, SRS
+apps/server/       Express API, SQLite, AI providers, SRS (local dev)
+apps/cloud/        Cloudflare Worker + D1 backend, deployed at zhong.rome.markets
 apps/web/          React, Vite, Tailwind, library and review UI
 apps/picker/       Native macOS selection overlay
 apps/menubar/      Native macOS menubar app
 apps/service/      Native macOS Services host
+apps/ios/          Native iOS app (App Intents based)
 bin/zhong          Global macOS lifecycle CLI
+.qoder/repowiki/   Project documentation (repowiki)
 ```
 
 ## Development Checks
@@ -159,9 +164,23 @@ npm run build
 Runtime files and local secrets are ignored by git. The SQLite database is
 only used in local development; the Mac apps connect to the cloud backend.
 
-The cloud project lives in `~/Code/market/zhong` (Cloudflare Worker + D1,
-deployed at https://zhong.rome.markets, same API as the local server). Its web
-UI build is synced from this repo via `scripts/sync-web.sh`.
+## Cloud deployment
+
+`apps/cloud` is the production backend (Cloudflare Worker + D1, same API as
+the local server), deployed at https://zhong.rome.markets. It also serves the
+web UI: `npm run deploy:cloud` rebuilds `apps/web`, syncs `dist` into
+`apps/cloud/public`, and runs `wrangler deploy`.
+
+Secrets are never committed — set them on the worker once:
+
+```bash
+cd apps/cloud
+npx wrangler secret put DEEPSEEK_API_KEY
+```
+
+Local dev secrets go in `apps/cloud/.dev.vars` (see `.dev.vars.example`).
+Schema changes: add a migration file, then
+`npm run db:apply:remote -w @zhong/cloud`.
 
 ## iOS App
 
@@ -183,6 +202,6 @@ vocab), settings with backend URL config + health check.
 on iOS 18.4.
 
 **Cloud backend:** Deployed at https://zhong.rome.markets (Cloudflare Worker
-+ D1, same API as the local server). Project lives in `~/Code/market/zhong`.
++ D1, same API as the local server). Project lives in `apps/cloud`.
 Set the backend URL in Settings to `https://zhong.rome.markets` and run the
 health check.

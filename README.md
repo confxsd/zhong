@@ -11,6 +11,14 @@ browser redirect.
 
 ![Vocabulary library](docs/screenshots/library.png)
 
+## Product Direction
+
+The platform roadmap lives in [`docs/plan/`](docs/plan/): vision
+(`init.md`), phased roadmap (`roadmap.md`), feature list (`features.md`),
+technical implementation (`implementation.md`), and the 13-month Xiamen
+University prep plan (`xiamen-prep.md`). Scope is fixed to standard
+Mandarin, simplified characters, and pinyin.
+
 ## Features
 
 - Inline selection pill and teaching card for Chinese text across macOS

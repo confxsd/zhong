@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Headphones, PartyPopper, RotateCcw, Volume2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import SpeakButton from "../components/SpeakButton";
@@ -18,6 +18,7 @@ export default function ReviewPage() {
   const [listen, setListen] = useState(false);
   const [history, setHistory] = useState<{ card: ReviewCard; grade: Grade }[]>([]);
   const [sessionStats, setSessionStats] = useState<{ total: number; correct: number; again: number }>({ total: 0, correct: 0, again: 0 });
+  const gradingRef = useRef(false);
 
   const due = useQuery({
     queryKey: ["review", "due"],
@@ -58,6 +59,10 @@ export default function ReviewPage() {
   });
 
   const card: ReviewCard | null = queue ? queue[position] : null;
+
+  useEffect(() => {
+    if (queue && card === null) setQueue(null);
+  }, [queue, card]);
 
   const handleCardClick = () => {
     if (listen && !flipped && card) speak(card.hanzi);
@@ -112,7 +117,7 @@ export default function ReviewPage() {
     );
   }
 
-  if (card === null) return null;
+  if (!card) return null;
 
   return (
     <div className="mx-auto max-w-xl">
@@ -187,7 +192,11 @@ export default function ReviewPage() {
         {GRADES.map((g) => (
           <button
             key={g.key}
-            onClick={() => grade.mutate({ id: card.id, g: g.key })}
+            onClick={() => {
+              if (gradingRef.current) return;
+              gradingRef.current = true;
+              grade.mutate({ id: card.id, g: g.key }, { onSettled: () => { gradingRef.current = false; } });
+            }}
             disabled={grade.isPending}
             className={`rounded-2xl px-2 py-3 text-sm font-semibold transition disabled:opacity-50 ${
               g.tone === "hard"
